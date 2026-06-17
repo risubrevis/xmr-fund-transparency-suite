@@ -1,0 +1,69 @@
+from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
+
+from app.config import settings
+from app.logging import get_logger, setup_logging
+
+logger = get_logger("app")
+
+
+def create_app() -> FastAPI:
+    """Application factory."""
+    setup_logging(settings.log_level, settings.log_format)
+    logger.info("starting_application", log_level=settings.log_level)
+
+    app = FastAPI(
+        title="XMR View-Only Dashboard",
+        description="Fund Transparency Suite — self-hosted Monero donation tracker",
+        version="0.1.0",
+    )
+
+    # CORS
+    origins = [origin.strip() for origin in settings.cors_origins.split(",")]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+    # Rate limiting
+    limiter = Limiter(key_func=get_remote_address)
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+    app.add_middleware(SlowAPIMiddleware)
+
+    # Routers
+    from app.api.v1.endpoints import (
+        events,
+        funds,
+        health,
+        reports,
+        transactions,
+        widget,
+    )
+
+    app.include_router(funds.router, prefix="/api/v1")
+    app.include_router(transactions.router, prefix="/api/v1")
+    app.include_router(reports.router, prefix="/api/v1")
+    app.include_router(events.router, prefix="/api/v1")
+    app.include_router(widget.router)
+    app.include_router(health.router)
+
+    @app.on_event("startup")
+    async def startup() -> None:
+        logger.info("application_started")
+
+    @app.on_event("shutdown")
+    async def shutdown() -> None:
+        logger.info("application_stopped")
+
+    return app
+
+
+app = create_app()
