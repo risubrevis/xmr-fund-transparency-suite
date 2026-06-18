@@ -1,6 +1,11 @@
 .env
 settings.json
+
+# Persistent data directories (bind mounts)
 data/
+postgres/
+redis/
+monero-wallet-rpc/
 __pycache__/
 *.pyc
 *.pyo

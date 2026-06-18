@@ -1,4 +1,11 @@
+import os
+import sys
 from logging.config import fileConfig
+
+# Ensure the project root is on sys.path so that
+# "from app.database import Base" resolves correctly
+# when alembic runs from the working directory.
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from alembic import context
 from app.database import Base
@@ -9,6 +16,13 @@ config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Override sqlalchemy.url from DATABASE_URL environment variable.
+# Alembic needs a synchronous driver, so convert asyncpg → psycopg2.
+database_url = os.environ.get("DATABASE_URL", "")
+if database_url:
+    sync_url = database_url.replace("+asyncpg", "+psycopg2", 1)
+    config.set_main_option("sqlalchemy.url", sync_url)
 
 target_metadata = Base.metadata
 

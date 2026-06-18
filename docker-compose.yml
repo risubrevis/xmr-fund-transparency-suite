@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: xmruser
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./postgres:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     networks:
@@ -19,6 +19,9 @@ services:
 
   redis:
     image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - ./redis:/data
     ports:
       - "6379:6379"
     networks:
@@ -38,7 +41,7 @@ services:
       --disable-rpc-login
       --trusted-daemon
     volumes:
-      - monero_data:/home/monero
+      - ./monero-wallet-rpc:/home/monero
     ports:
       - "18082:18082"
     networks:
@@ -87,16 +90,13 @@ services:
       MONERO_RPC_URL: http://monero-wallet-rpc:18082/json_rpc
       SCAN_INTERVAL: "60"
       LOG_LEVEL: INFO
+      SKIP_MIGRATIONS: "true"
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - xmrnet
     restart: unless-stopped
-
-volumes:
-  postgres_data:
-  monero_data:
 
 networks:
   xmrnet:
