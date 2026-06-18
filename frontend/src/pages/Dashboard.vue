@@ -174,7 +174,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from "vue";
+import { ref, watch, computed } from "vue";
 import { useRouter } from "vue-router";
 import {
   Landmark,
@@ -216,11 +216,15 @@ const hasMore = ref(false);
 const loadingMore = ref(false);
 const nextCursor = ref<string | null>(null);
 
-onMounted(async () => {
-  if (store.apiKeySet && store.currentFund) {
-    await loadTransactions();
-  }
-});
+watch(
+  currentFund,
+  async (fund) => {
+    if (fund) {
+      await loadTransactions();
+    }
+  },
+  { immediate: true },
+);
 
 async function login() {
   if (!apiKeyInput.value.trim()) return;
