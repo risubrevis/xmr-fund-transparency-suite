@@ -22,6 +22,10 @@ async def seed() -> None:
         fund = result.scalar_one_or_none()
 
         if fund:
+            # Backfill target_amount_xmr for funds created before migration
+            if fund.target_amount_xmr is None:
+                fund.target_amount_xmr = TEST_TARGET_XMR
+                await session.commit()
             print(fund.id)
             return
 
