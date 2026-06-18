@@ -66,6 +66,7 @@ export interface Fund {
   primary_address: string;
   start_height: number;
   is_active: boolean;
+  target_amount_xmr: string | null;
   last_scan_at: string | null;
   last_scanned_height: number | null;
   scan_error: string | null;
@@ -101,14 +102,21 @@ export const fundsApi = {
     primary_address: string;
     view_key: string;
     start_height: number;
+    target_amount_xmr?: string | null;
   }) => api.post<Fund>("/api/v1/funds", data),
 
   get: (id: string) => api.get<Fund>(`/api/v1/funds/${id}`),
 
   getDetail: (id: string) => api.get<Fund>(`/api/v1/funds/${id}`),
 
-  update: (id: string, data: { label?: string; is_active?: boolean }) =>
-    api.patch<Fund>(`/api/v1/funds/${id}`, data),
+  update: (
+    id: string,
+    data: {
+      label?: string;
+      is_active?: boolean;
+      target_amount_xmr?: string | null;
+    },
+  ) => api.patch<Fund>(`/api/v1/funds/${id}`, data),
 
   delete: (id: string) => api.delete(`/api/v1/funds/${id}`),
 

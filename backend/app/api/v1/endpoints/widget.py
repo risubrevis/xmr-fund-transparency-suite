@@ -18,6 +18,21 @@ WIDGET_JS_TEMPLATE = """
     fetch('/widget/UUID_PLACEHOLDER.json')
         .then(function(r) { return r.json(); })
         .then(function(data) {
+            var progressHtml = '';
+            if (data.target_amount_xmr) {
+                var pct = Math.min(
+                    (parseFloat(data.total_received_xmr) / parseFloat(data.target_amount_xmr)) * 100,
+                    100
+                );
+                progressHtml =
+                    '<div style="margin-top:12px;">' +
+                    '<div style="background:rgba(255,255,255,0.3);border-radius:8px;overflow:hidden;height:8px;">' +
+                    '<div style="background:#fff;height:8px;width:' + pct.toFixed(1) + '%;"></div>' +
+                    '</div>' +
+                    '<div style="font-size:12px;opacity:0.9;margin-top:4px;">' +
+                    data.total_received_xmr + ' / ' + data.target_amount_xmr + ' XMR' +
+                    '</div></div>';
+            }
             container.innerHTML = '<div style="' +
                 'font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;' +
                 'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);' +
@@ -27,6 +42,7 @@ WIDGET_JS_TEMPLATE = """
                 '&#128176; ' + data.label + '</div>' +
                 '<div style="font-size: 36px; font-weight: bold; margin-bottom: 8px;">' +
                 data.total_received_xmr + ' XMR</div>' +
+                progressHtml +
                 '<div style="font-size: 12px; opacity: 0.8;">' +
                 'Updated: ' + data.last_updated + '</div></div>';
         })
@@ -90,6 +106,9 @@ async def get_widget_json(
     data = {
         "label": fund.label,
         "total_received_xmr": f"{total_xmr:.2f}",
+        "target_amount_xmr": f"{fund.target_amount_xmr:.2f}"
+        if fund.target_amount_xmr is not None
+        else None,
         "transaction_count": tx_count,
         "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
     }

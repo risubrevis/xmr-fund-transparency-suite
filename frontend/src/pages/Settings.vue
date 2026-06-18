@@ -107,6 +107,27 @@
             </p>
           </div>
 
+          <div>
+            <label
+              for="target-amount"
+              class="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Target Amount (XMR)
+              <span class="text-gray-400">optional</span>
+            </label>
+            <input
+              id="target-amount"
+              v-model="createForm.target_amount_xmr"
+              type="text"
+              placeholder="e.g. 1000"
+              class="w-full px-4 h-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              Optional fundraising goal. Displayed on the dashboard and public
+              widget.
+            </p>
+          </div>
+
           <div
             v-if="createError"
             class="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2"
@@ -254,6 +275,42 @@
                     </div>
                   </Button>
                 </div>
+              </div>
+
+              <div>
+                <label
+                  for="target-xmr"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Target Amount (XMR)
+                </label>
+                <div class="flex gap-3">
+                  <input
+                    id="target-xmr"
+                    v-model="newTargetAmount"
+                    type="text"
+                    placeholder="e.g. 1000"
+                    class="flex-1 px-4 h-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+                  />
+                  <Button
+                    variant="outline"
+                    :disabled="savingTarget"
+                    @click="updateTargetAmount"
+                  >
+                    <div class="flex items-center space-x-1">
+                      <Loader2
+                        v-if="savingTarget"
+                        :size="14"
+                        class="animate-spin"
+                      />
+                      <Save v-else :size="14" />
+                      <span>{{ savingTarget ? "Saving..." : "Update" }}</span>
+                    </div>
+                  </Button>
+                </div>
+                <p v-if="targetError" class="mt-1.5 text-sm text-red-600">
+                  {{ targetError }}
+                </p>
               </div>
 
               <div>
@@ -426,8 +483,11 @@ const maskedKey = computed(() => {
 
 // Fund management state
 const newLabel = ref(currentFund.value?.label || "");
+const newTargetAmount = ref(currentFund.value?.target_amount_xmr || "");
 const showDeleteModal = ref(false);
 const savingLabel = ref(false);
+const savingTarget = ref(false);
+const targetError = ref("");
 const togglingActive = ref(false);
 const deleting = ref(false);
 
@@ -437,6 +497,7 @@ const createForm = reactive({
   primary_address: "",
   view_key: "",
   start_height: 3280000,
+  target_amount_xmr: "",
 });
 const createError = ref("");
 const creating = ref(false);
@@ -457,6 +518,7 @@ const formatExamples = [
 watch(currentFund, (fund) => {
   if (fund) {
     newLabel.value = fund.label;
+    newTargetAmount.value = fund.target_amount_xmr || "";
   }
 });
 
@@ -479,7 +541,12 @@ async function handleCreateFund() {
   createError.value = "";
   creating.value = true;
   try {
-    await store.createFund(createForm);
+    const payload = { ...createForm };
+    // Only send target_amount_xmr if it has a value
+    if (!payload.target_amount_xmr?.trim()) {
+      delete payload.target_amount_xmr;
+    }
+    await store.createFund(payload);
     router.push("/");
   } catch (err: any) {
     createError.value = err.response?.data?.detail || "Failed to create fund";
@@ -498,6 +565,42 @@ async function updateLabel() {
     // Error handled silently
   } finally {
     savingLabel.value = false;
+  }
+}
+
+async function updateTargetAmount() {
+  if (!currentFund.value) return;
+  targetError.value = "";
+  savingTarget.value = true;
+  try {
+    const value = newTargetAmount.value.trim();
+    const payload: { target_amount_xmr?: string | null } = {};
+    if (value === "") {
+      // Clear the target
+      payload.target_amount_xmr = null;
+    } else {
+      // Validate XMR precision (max 12 decimal places)
+      const parsed = parseFloat(value);
+      if (isNaN(parsed) || parsed <= 0) {
+        targetError.value = "Enter a positive number";
+        savingTarget.value = false;
+        return;
+      }
+      const parts = value.split(".");
+      if (parts.length > 1 && parts[1].length > 12) {
+        targetError.value = "Maximum 12 decimal places allowed for XMR";
+        savingTarget.value = false;
+        return;
+      }
+      payload.target_amount_xmr = value;
+    }
+    await fundsApi.update(currentFund.value.id, payload);
+    await store.fetchFund(currentFund.value.id);
+  } catch (err: any) {
+    targetError.value =
+      err.response?.data?.detail || "Failed to update target amount";
+  } finally {
+    savingTarget.value = false;
   }
 }
 

@@ -5,12 +5,14 @@ Prints the fund UUID to stdout for use by other scripts.
 """
 
 import asyncio
+from decimal import Decimal
 
 from app.database import async_session_factory
 from app.models import Fund
 from sqlalchemy import select
 
 TEST_FUND_LABEL = "Test Fund"
+TEST_TARGET_XMR = Decimal("1000")
 
 
 async def seed() -> None:
@@ -29,6 +31,7 @@ async def seed() -> None:
             view_key="a" * 64,
             start_height=3_280_000,
             is_active=True,
+            target_amount_xmr=TEST_TARGET_XMR,
         )
         session.add(fund)
         await session.commit()

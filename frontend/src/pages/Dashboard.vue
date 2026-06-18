@@ -145,6 +145,7 @@
             :public-uuid="currentFund.public_uuid"
             :fund-label="currentFund.label"
             :total-xmr="currentFund.stats?.total_received_xmr || '0.00'"
+            :target-amount-xmr="currentFund.target_amount_xmr"
           />
         </div>
 

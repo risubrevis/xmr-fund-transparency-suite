@@ -51,6 +51,9 @@
         <p class="text-2xl font-bold text-monero-orange">
           {{ stats?.total_received_xmr || "0.00" }} XMR
         </p>
+        <p v-if="fund.target_amount_xmr" class="text-xs text-gray-500 mt-1">
+          Target: {{ fund.target_amount_xmr }} XMR
+        </p>
       </div>
       <div>
         <p class="text-sm text-gray-500">Transactions</p>

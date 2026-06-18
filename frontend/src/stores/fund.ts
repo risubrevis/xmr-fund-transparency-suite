@@ -72,6 +72,7 @@ export const useFundStore = defineStore("fund", () => {
     primary_address: string;
     view_key: string;
     start_height: number;
+    target_amount_xmr?: string | null;
   }) {
     loading.value = true;
     error.value = null;

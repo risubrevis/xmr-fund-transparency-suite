@@ -94,6 +94,7 @@ async def create_fund(
         primary_address=body.primary_address,
         view_key=encrypted_view_key,
         start_height=body.start_height,
+        target_amount_xmr=body.target_amount_xmr,
     )
     db.add(fund)
     await db.commit()
@@ -145,6 +146,7 @@ async def get_fund(
         primary_address=fund.primary_address,
         start_height=fund.start_height,
         is_active=fund.is_active,
+        target_amount_xmr=fund.target_amount_xmr,
         last_scan_at=fund.last_scan_at,
         last_scanned_height=fund.last_scanned_height,
         scan_error=fund.scan_error,
@@ -173,6 +175,11 @@ async def update_fund(
         fund.label = body.label
     if body.is_active is not None:
         fund.is_active = body.is_active
+
+    # Use exclude_unset to distinguish "not provided" from "explicitly null"
+    unset_fields = body.model_fields_set
+    if "target_amount_xmr" in unset_fields:
+        fund.target_amount_xmr = body.target_amount_xmr
 
     await db.commit()
     await db.refresh(fund)

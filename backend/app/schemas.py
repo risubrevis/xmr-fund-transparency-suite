@@ -12,6 +12,24 @@ class FundCreate(BaseModel):
     primary_address: str = Field(..., min_length=95, max_length=95)
     view_key: str = Field(..., min_length=64, max_length=64)
     start_height: int = Field(..., ge=0)
+    target_amount_xmr: Decimal | None = Field(
+        None,
+        description="Optional fundraising target in XMR",
+    )
+
+    @field_validator("target_amount_xmr")
+    @classmethod
+    def validate_target_amount_precision(cls, v: Decimal | None) -> Decimal | None:
+        if v is not None:
+            if v <= 0:
+                raise ValueError("Target amount must be greater than 0")
+            # XMR has at most 12 decimal places (piconero precision)
+            exponent = v.as_tuple().exponent
+            if isinstance(exponent, int) and -exponent > 12:
+                raise ValueError(
+                    "Target amount must not exceed 12 decimal places (XMR precision)"
+                )
+        return v
 
     @field_validator("view_key")
     @classmethod
@@ -37,6 +55,23 @@ class FundUpdate(BaseModel):
 
     label: str | None = None
     is_active: bool | None = None
+    target_amount_xmr: Decimal | None = Field(
+        None,
+        description="Optional fundraising target in XMR. Set to null to clear.",
+    )
+
+    @field_validator("target_amount_xmr")
+    @classmethod
+    def validate_target_amount_precision(cls, v: Decimal | None) -> Decimal | None:
+        if v is not None:
+            if v <= 0:
+                raise ValueError("Target amount must be greater than 0")
+            exponent = v.as_tuple().exponent
+            if isinstance(exponent, int) and -exponent > 12:
+                raise ValueError(
+                    "Target amount must not exceed 12 decimal places (XMR precision)"
+                )
+        return v
 
 
 class FundResponse(BaseModel):
@@ -48,6 +83,7 @@ class FundResponse(BaseModel):
     primary_address: str
     start_height: int
     is_active: bool
+    target_amount_xmr: Decimal | None = None
     last_scan_at: datetime | None = None
     last_scanned_height: int | None = None
     scan_error: str | None = None

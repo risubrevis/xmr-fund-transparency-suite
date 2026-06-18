@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
 
 from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -34,6 +35,9 @@ class Fund(Base):
         DateTime(timezone=True), onupdate=func.now()
     )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    target_amount_xmr: Mapped[Decimal | None] = mapped_column(
+        Numeric(precision=20, scale=12), nullable=True
+    )
 
     transactions: Mapped[list["Transaction"]] = relationship(
         back_populates="fund", lazy="selectin"
