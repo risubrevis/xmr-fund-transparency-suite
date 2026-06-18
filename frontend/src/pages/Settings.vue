@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-2xl mx-auto">
+  <div class="space-y-6">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
       <!-- Create Fund (when no fund exists) -->
       <template v-if="!currentFund">
