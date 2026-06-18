@@ -124,6 +124,13 @@ export const fundsApi = {
     api.get(`/api/v1/funds/${id}/report.xml`, { responseType: "blob" }),
 };
 
+export const settingsApi = {
+  getDatetimeFormat: () => api.get("/api/v1/settings/datetime-format"),
+
+  updateDatetimeFormat: (pattern: string) =>
+    api.put("/api/v1/settings/datetime-format", { pattern }),
+};
+
 export const healthApi = {
   check: () => api.get("/health"),
 };

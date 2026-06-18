@@ -12,6 +12,7 @@ from app.logging import get_logger
 from app.models import Fund, Transaction
 from app.reports.pdf import generate_pdf_report
 from app.reports.xml import generate_xml_report
+from app.settings import get_datetime_format
 
 logger = get_logger("api.reports")
 router = APIRouter()
@@ -45,6 +46,8 @@ async def get_pdf_report(
         max(tx.timestamp for tx in transactions) if transactions else datetime.utcnow()
     )
 
+    dt_format = get_datetime_format()
+
     pdf_data = generate_pdf_report(
         fund_label=fund.label,
         transactions=[
@@ -60,6 +63,7 @@ async def get_pdf_report(
         total_xmr=str(total_xmr),
         date_from=date_from,
         date_to=date_to,
+        datetime_format=dt_format,
     )
 
     return Response(
@@ -90,6 +94,8 @@ async def get_xml_report(
 
     total_xmr = sum(tx.amount_xmr for tx in transactions)
 
+    dt_format = get_datetime_format()
+
     xml_data = generate_xml_report(
         fund_label=fund.label,
         transactions=[
@@ -103,6 +109,7 @@ async def get_xml_report(
             for tx in transactions
         ],
         total_xmr=str(total_xmr),
+        datetime_format=dt_format,
     )
 
     return Response(

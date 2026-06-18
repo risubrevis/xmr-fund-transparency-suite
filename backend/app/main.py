@@ -7,6 +7,7 @@ from slowapi.util import get_remote_address
 
 from app.config import settings
 from app.logging import get_logger, setup_logging
+from app.settings import ensure_settings_file
 
 logger = get_logger("app")
 
@@ -47,16 +48,19 @@ def create_app() -> FastAPI:
         transactions,
         widget,
     )
+    from app.api.v1.endpoints import settings as settings_mod
 
     app.include_router(funds.router, prefix="/api/v1")
     app.include_router(transactions.router, prefix="/api/v1")
     app.include_router(reports.router, prefix="/api/v1")
     app.include_router(events.router, prefix="/api/v1")
+    app.include_router(settings_mod.router, prefix="/api/v1")
     app.include_router(widget.router)
     app.include_router(health.router)
 
     @app.on_event("startup")
     async def startup() -> None:
+        ensure_settings_file()
         logger.info("application_started")
 
     @app.on_event("shutdown")

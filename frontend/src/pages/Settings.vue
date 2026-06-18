@@ -153,6 +153,70 @@
             </div>
           </div>
 
+          <!-- Date and Time Format Section -->
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900 mb-2">
+              Date and Time Format
+            </h3>
+            <p class="text-sm text-gray-600 mb-3">
+              This setting affects how dates and times are displayed on the
+              dashboard and in all PDF/XML reports.
+            </p>
+            <div class="mb-3 space-y-1.5">
+              <p class="text-xs text-gray-500">Example patterns:</p>
+              <div
+                v-for="example in formatExamples"
+                :key="example.pattern"
+                class="flex items-center gap-2 text-xs"
+              >
+                <code
+                  class="bg-gray-100 px-2 py-0.5 rounded font-mono text-gray-700"
+                  >{{ example.pattern }}</code
+                >
+                <span class="text-gray-400">→</span>
+                <span class="text-gray-600">{{ example.output }}</span>
+              </div>
+            </div>
+            <div>
+              <label
+                for="datetime-format"
+                class="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Format pattern
+              </label>
+              <div class="flex gap-3 items-start">
+                <div class="flex-1">
+                  <input
+                    id="datetime-format"
+                    v-model="datetimeFormat"
+                    type="text"
+                    placeholder="YYYY-MM-DD HH:mm:ss"
+                    class="w-full px-4 h-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange font-mono text-sm"
+                    @keydown.enter="updateDatetimeFormat"
+                  />
+                  <p v-if="formatError" class="mt-1.5 text-sm text-red-600">
+                    {{ formatError }}
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  :disabled="savingFormat"
+                  @click="updateDatetimeFormat"
+                >
+                  <div class="flex items-center space-x-1">
+                    <Loader2
+                      v-if="savingFormat"
+                      :size="14"
+                      class="animate-spin"
+                    />
+                    <Save v-else :size="14" />
+                    <span>{{ savingFormat ? "Saving..." : "Update" }}</span>
+                  </div>
+                </Button>
+              </div>
+            </div>
+          </div>
+
           <!-- Fund Management -->
           <div>
             <h3 class="text-lg font-semibold text-gray-900 mb-2">
@@ -325,7 +389,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from "vue";
+import { ref, reactive, computed, watch, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import {
   LogOut,
@@ -344,9 +408,15 @@ import {
 import { useFundStore } from "@/stores/fund";
 import { fundsApi } from "@/lib/api";
 import { Button } from "@/components/ui/button";
+import { useDatetimeFormat } from "@/composables/useDatetimeFormat";
 
 const router = useRouter();
 const store = useFundStore();
+const {
+  formatDate: formatDatetime,
+  loadFormat,
+  updateFormat,
+} = useDatetimeFormat();
 
 const currentFund = computed(() => store.currentFund);
 const maskedKey = computed(() => {
@@ -372,10 +442,31 @@ const createError = ref("");
 const creating = ref(false);
 const showViewKey = ref(false);
 
+// Datetime format state
+const datetimeFormat = ref("YYYY-MM-DD HH:mm:ss");
+const formatError = ref("");
+const savingFormat = ref(false);
+
+const formatExamples = [
+  { pattern: "YYYY-MM-DD HH:mm:ss", output: "2026-06-17 14:30:00" },
+  { pattern: "DD/MM/YYYY HH:mm", output: "17/06/2026 14:30" },
+  { pattern: "MM-DD-YYYY", output: "06-17-2026" },
+];
+
 // Sync label when fund loads
 watch(currentFund, (fund) => {
   if (fund) {
     newLabel.value = fund.label;
+  }
+});
+
+// Load datetime format on mount
+onMounted(async () => {
+  try {
+    const fmt = await loadFormat();
+    datetimeFormat.value = fmt;
+  } catch {
+    // Use default format
   }
 });
 
@@ -410,6 +501,19 @@ async function updateLabel() {
   }
 }
 
+async function updateDatetimeFormat() {
+  formatError.value = "";
+  savingFormat.value = true;
+  try {
+    const pattern = await updateFormat(datetimeFormat.value.trim());
+    datetimeFormat.value = pattern;
+  } catch (err: any) {
+    formatError.value = err.response?.data?.detail || "Failed to update format";
+  } finally {
+    savingFormat.value = false;
+  }
+}
+
 async function toggleActive() {
   if (!currentFund.value) return;
   togglingActive.value = true;
@@ -441,6 +545,6 @@ async function deleteFund() {
 }
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleString();
+  return formatDatetime(dateStr);
 }
 </script>

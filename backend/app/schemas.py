@@ -96,3 +96,15 @@ class TransactionListResponse(BaseModel):
     items: list[TransactionResponse]
     next_cursor: str | None = None
     has_more: bool = False
+
+
+class DateTimeFormatUpdate(BaseModel):
+    """Request body for updating datetime format."""
+
+    pattern: str
+
+
+class DateTimeFormatResponse(BaseModel):
+    """Response for datetime format setting."""
+
+    pattern: str

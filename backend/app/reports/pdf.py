@@ -4,6 +4,8 @@ from typing import List
 
 from jinja2 import Template
 
+from app.validators import format_datetime
+
 PDF_TEMPLATE = Template("""<!DOCTYPE html>
 <html>
 <head>
@@ -64,18 +66,44 @@ def generate_pdf_report(
     total_xmr: str,
     date_from: datetime,
     date_to: datetime,
+    datetime_format: str | None = None,
 ) -> bytes:
     """Generate PDF report from transaction data."""
     from weasyprint import HTML
 
+    now = datetime.now()
+    generated_at = (
+        format_datetime(now, datetime_format) if datetime_format else now.isoformat()
+    )
+    date_from_str = (
+        format_datetime(date_from, datetime_format)
+        if datetime_format
+        else date_from.strftime("%Y-%m-%d")
+    )
+    date_to_str = (
+        format_datetime(date_to, datetime_format)
+        if datetime_format
+        else date_to.strftime("%Y-%m-%d")
+    )
+
+    # Format transaction timestamps if a format is provided
+    formatted_transactions = []
+    for tx in transactions:
+        tx_copy = dict(tx)
+        if datetime_format and hasattr(tx_copy["timestamp"], "year"):
+            tx_copy["timestamp"] = format_datetime(
+                tx_copy["timestamp"], datetime_format
+            )
+        formatted_transactions.append(tx_copy)
+
     html_content = PDF_TEMPLATE.render(
         fund_label=fund_label,
-        generated_at=datetime.now().isoformat(),
+        generated_at=generated_at,
         total_xmr=total_xmr,
         tx_count=len(transactions),
-        date_from=date_from.strftime("%Y-%m-%d"),
-        date_to=date_to.strftime("%Y-%m-%d"),
-        transactions=transactions,
+        date_from=date_from_str,
+        date_to=date_to_str,
+        transactions=formatted_transactions,
     )
 
     pdf_file = io.BytesIO()

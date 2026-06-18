@@ -55,8 +55,11 @@ services:
       MONERO_RPC_URL: http://monero-wallet-rpc:18082/json_rpc
       API_KEY: ${API_KEY}
       VIEW_KEY_MASTER_SECRET: ${VIEW_KEY_MASTER_SECRET}
+      SETTINGS_FILE_PATH: /app/data/settings.json
       SCAN_INTERVAL: "60"
       LOG_LEVEL: INFO
+    volumes:
+      - ./data:/app/data
     depends_on:
       postgres:
         condition: service_healthy

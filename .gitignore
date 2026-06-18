@@ -1,4 +1,6 @@
 .env
+settings.json
+data/
 __pycache__/
 *.pyc
 *.pyo

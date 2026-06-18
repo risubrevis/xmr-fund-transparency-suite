@@ -3,11 +3,14 @@ from typing import List
 from xml.dom import minidom
 from xml.etree.ElementTree import Element, SubElement, tostring
 
+from app.validators import format_datetime
+
 
 def generate_xml_report(
     fund_label: str,
     transactions: List[dict],
     total_xmr: str,
+    datetime_format: str | None = None,
 ) -> str:
     """Generate XML report from transaction data."""
     root = Element("fund_report")
@@ -20,7 +23,10 @@ def generate_xml_report(
     fund_label_elem.text = fund_label
 
     generated_at = SubElement(meta, "generated_at")
-    generated_at.text = datetime.now().isoformat()
+    now = datetime.now()
+    generated_at.text = (
+        format_datetime(now, datetime_format) if datetime_format else now.isoformat()
+    )
 
     total = SubElement(meta, "total_received_xmr")
     total.text = total_xmr
@@ -40,11 +46,12 @@ def generate_xml_report(
         amount.text = str(tx["amount_xmr"])
 
         timestamp = SubElement(tx_elem, "timestamp")
-        timestamp.text = (
-            tx["timestamp"].isoformat()
-            if hasattr(tx["timestamp"], "isoformat")
-            else str(tx["timestamp"])
-        )
+        if datetime_format and hasattr(tx["timestamp"], "year"):
+            timestamp.text = format_datetime(tx["timestamp"], datetime_format)
+        elif hasattr(tx["timestamp"], "isoformat"):
+            timestamp.text = tx["timestamp"].isoformat()
+        else:
+            timestamp.text = str(tx["timestamp"])
 
         confirmations = SubElement(tx_elem, "confirmations")
         confirmations.text = str(tx["confirmations"])
