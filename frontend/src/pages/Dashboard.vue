@@ -127,8 +127,25 @@
       <template v-else>
         <FundCard :fund="currentFund" :stats="currentFund.stats" />
 
-        <div class="mt-6">
-          <BalanceChart :fund-id="currentFund.id" />
+        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <CumulativeReceivedChart
+            :transactions="transactions"
+            :target-amount="currentFund.target_amount_xmr"
+            :loading="loadingTransactions"
+          />
+          <TargetProgressBar
+            :total-received="currentFund.stats?.total_received_xmr || '0.00'"
+            :target-amount="currentFund.target_amount_xmr"
+            :loading="loadingTransactions"
+          />
+          <TimeDistributionChart
+            :transactions="transactions"
+            :loading="loadingTransactions"
+          />
+          <DonutSizeDistribution
+            :transactions="transactions"
+            :loading="loadingTransactions"
+          />
         </div>
 
         <div class="mt-6">
@@ -195,7 +212,10 @@ import {
 import { useFundStore } from "@/stores/fund";
 import { fundsApi, type Transaction } from "@/lib/api";
 import FundCard from "@/components/Dashboard/FundCard.vue";
-import BalanceChart from "@/components/Dashboard/BalanceChart.vue";
+import CumulativeReceivedChart from "@/components/Dashboard/Charts/CumulativeReceivedChart.vue";
+import TargetProgressBar from "@/components/Dashboard/Charts/TargetProgressBar.vue";
+import TimeDistributionChart from "@/components/Dashboard/Charts/TimeDistributionChart.vue";
+import DonutSizeDistribution from "@/components/Dashboard/Charts/DonutSizeDistribution.vue";
 import TransactionTable from "@/components/Dashboard/TransactionTable.vue";
 import WidgetPreview from "@/components/Widget/WidgetPreview.vue";
 import { Button } from "@/components/ui/button";
@@ -215,6 +235,7 @@ const error = computed(() => store.error);
 const transactions = ref<Transaction[]>([]);
 const hasMore = ref(false);
 const loadingMore = ref(false);
+const loadingTransactions = ref(true);
 const nextCursor = ref<string | null>(null);
 
 watch(
@@ -239,6 +260,7 @@ async function login() {
 
 async function loadTransactions() {
   if (!currentFund.value) return;
+  loadingTransactions.value = true;
   try {
     const response = await fundsApi.transactions(currentFund.value.id);
     transactions.value = response.data.items;
@@ -246,6 +268,8 @@ async function loadTransactions() {
     nextCursor.value = response.data.next_cursor;
   } catch {
     // Transactions may not exist yet
+  } finally {
+    loadingTransactions.value = false;
   }
 }
 
