@@ -68,10 +68,13 @@
       <!-- Radial Gauge -->
       <div v-else class="h-48 relative">
         <Doughnut :data="gaugeData" :options="gaugeOptions" />
-        <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+        <div
+          class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
           style="bottom: 0"
         >
-          <span class="text-2xl font-bold text-gray-900">{{ displayPercent }}%</span>
+          <span class="text-2xl font-bold text-gray-900"
+            >{{ displayPercent }}%</span
+          >
           <span class="text-sm text-gray-500">{{ received }} XMR</span>
         </div>
       </div>
@@ -80,7 +83,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { computed } from "vue";
 import { Doughnut } from "vue-chartjs";
 import {
   Chart as ChartJS,
@@ -90,6 +93,7 @@ import {
 } from "chart.js";
 import { Target, Loader2 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import { useChartPreferences } from "@/composables/useChartPreferences";
 
 ChartJS.register(ArcElement, Tooltip, DoughnutController);
 
@@ -99,7 +103,9 @@ const props = defineProps<{
   loading: boolean;
 }>();
 
-const viewMode = ref<"bar" | "gauge">("bar");
+const { goalViewMode } = useChartPreferences();
+
+const viewMode = goalViewMode;
 
 const received = computed(() => parseFloat(props.totalReceived) || 0);
 const target = computed(() => parseFloat(props.targetAmount!) || 0);

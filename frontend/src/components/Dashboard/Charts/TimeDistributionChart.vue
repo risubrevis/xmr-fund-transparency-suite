@@ -3,7 +3,9 @@
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
         <BarChart3 class="w-5 h-5 text-orange-500" />
-        <h3 class="text-lg font-semibold text-gray-900">XMR Volume Distribution</h3>
+        <h3 class="text-lg font-semibold text-gray-900">
+          XMR Volume Distribution
+        </h3>
       </div>
 
       <div class="flex gap-1">
@@ -42,7 +44,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { Bar } from "vue-chartjs";
 import {
   Chart as ChartJS,
@@ -58,6 +60,7 @@ import { Button } from "@/components/ui/button";
 import type { Transaction } from "@/lib/api";
 import type { TimeInterval } from "@/composables/useTransactionAggregation";
 import { useTransactionAggregation } from "@/composables/useTransactionAggregation";
+import { useChartPreferences } from "@/composables/useChartPreferences";
 
 ChartJS.register(
   BarElement,
@@ -81,7 +84,7 @@ const intervalOptions: { value: TimeInterval; label: string }[] = [
   { value: "all", label: "All" },
 ];
 
-const selectedInterval = ref<TimeInterval>("1m");
+const { volumeInterval: selectedInterval } = useChartPreferences();
 
 const transactionsRef = computed(() => props.transactions);
 const { volumeData } = useTransactionAggregation(transactionsRef);

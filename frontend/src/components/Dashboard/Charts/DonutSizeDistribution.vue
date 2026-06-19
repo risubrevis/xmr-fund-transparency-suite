@@ -62,7 +62,7 @@
             {{ tier.percentage }}%
           </span>
           <span class="text-xs text-gray-400">
-            ({{ tier.count }} donation{{ tier.count !== 1 ? 's' : '' }})
+            ({{ tier.count }} donation{{ tier.count !== 1 ? "s" : "" }})
           </span>
         </div>
       </div>
@@ -71,7 +71,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed } from "vue";
 import { Doughnut } from "vue-chartjs";
 import {
   Chart as ChartJS,
@@ -82,8 +82,15 @@ import {
 import { PieChart, Loader2 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import type { Transaction } from "@/lib/api";
-import type { TimeInterval, SizeTier } from "@/composables/useTransactionAggregation";
-import { useTransactionAggregation, SIZE_TIERS } from "@/composables/useTransactionAggregation";
+import type {
+  TimeInterval,
+  SizeTier,
+} from "@/composables/useTransactionAggregation";
+import {
+  useTransactionAggregation,
+  SIZE_TIERS,
+} from "@/composables/useTransactionAggregation";
+import { useChartPreferences } from "@/composables/useChartPreferences";
 
 ChartJS.register(ArcElement, Tooltip, DoughnutController);
 
@@ -114,7 +121,7 @@ const intervalOptions: { value: TimeInterval; label: string }[] = [
   { value: "all", label: "All" },
 ];
 
-const selectedInterval = ref<TimeInterval>("1m");
+const { sizeInterval: selectedInterval } = useChartPreferences();
 
 const transactionsRef = computed(() => props.transactions);
 const { sizeData } = useTransactionAggregation(transactionsRef);
