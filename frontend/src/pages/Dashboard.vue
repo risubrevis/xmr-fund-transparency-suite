@@ -157,15 +157,6 @@
           />
         </div>
 
-        <div class="mt-6">
-          <WidgetPreview
-            :public-uuid="currentFund.public_uuid"
-            :fund-label="currentFund.label"
-            :total-xmr="currentFund.stats?.total_received_xmr || '0.00'"
-            :target-amount-xmr="currentFund.target_amount_xmr"
-          />
-        </div>
-
         <div class="mt-6 flex gap-3">
           <Button variant="outline" @click="downloadPdf">
             <div class="flex items-center space-x-1">
@@ -217,7 +208,6 @@ import TargetProgressBar from "@/components/Dashboard/Charts/TargetProgressBar.v
 import TimeDistributionChart from "@/components/Dashboard/Charts/TimeDistributionChart.vue";
 import DonutSizeDistribution from "@/components/Dashboard/Charts/DonutSizeDistribution.vue";
 import TransactionTable from "@/components/Dashboard/TransactionTable.vue";
-import WidgetPreview from "@/components/Widget/WidgetPreview.vue";
 import { Button } from "@/components/ui/button";
 
 const router = useRouter();

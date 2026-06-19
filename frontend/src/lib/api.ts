@@ -137,6 +137,18 @@ export const settingsApi = {
 
   updateDatetimeFormat: (pattern: string) =>
     api.put("/api/v1/settings/datetime-format", { pattern }),
+
+  getWidgetColor: () =>
+    api.get<{ color: string }>("/api/v1/settings/widget-color"),
+
+  updateWidgetColor: (color: string) =>
+    api.put<{ color: string }>("/api/v1/settings/widget-color", { color }),
+
+  getWidgetTextColor: () =>
+    api.get<{ color: string }>("/api/v1/settings/widget-text-color"),
+
+  updateWidgetTextColor: (color: string) =>
+    api.put<{ color: string }>("/api/v1/settings/widget-text-color", { color }),
 };
 
 export const healthApi = {

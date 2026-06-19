@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Fund, Transaction
+from app.settings import get_widget_base_color, get_widget_text_color
 
 router = APIRouter()
 
@@ -15,9 +16,56 @@ WIDGET_JS_TEMPLATE = """
     var container = document.getElementById('xmr-fund-widget');
     if (!container) return;
 
+    function hexToHsl(hex) {
+        var r = parseInt(hex.slice(1, 3), 16) / 255;
+        var g = parseInt(hex.slice(3, 5), 16) / 255;
+        var b = parseInt(hex.slice(5, 7), 16) / 255;
+        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+        var h, s, l = (max + min) / 2;
+        if (max === min) { h = s = 0; } else {
+            var d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+            else if (max === g) h = ((b - r) / d + 2) / 6;
+            else h = ((r - g) / d + 4) / 6;
+        }
+        return [h * 360, s * 100, l * 100];
+    }
+
+    function hslToHex(h, s, l) {
+        h = ((h % 360) + 360) % 360;
+        s /= 100; l /= 100;
+        var c = (1 - Math.abs(2 * l - 1)) * s;
+        var x = c * (1 - Math.abs((h / 60) % 2 - 1));
+        var m = l - c / 2;
+        var r, g, b;
+        if (h < 60) { r = c; g = x; b = 0; }
+        else if (h < 120) { r = x; g = c; b = 0; }
+        else if (h < 180) { r = 0; g = c; b = x; }
+        else if (h < 240) { r = 0; g = x; b = c; }
+        else if (h < 300) { r = x; g = 0; b = c; }
+        else { r = c; g = 0; b = x; }
+        var rs = Math.round((r + m) * 255).toString(16).padStart(2, '0');
+        var gs = Math.round((g + m) * 255).toString(16).padStart(2, '0');
+        var bs = Math.round((b + m) * 255).toString(16).padStart(2, '0');
+        return '#' + rs + gs + bs;
+    }
+
+    function shiftHue(hex, degrees) {
+        var hsl = hexToHsl(hex);
+        return hslToHex(hsl[0] + degrees, hsl[1], hsl[2]);
+    }
+
     fetch('/widget/UUID_PLACEHOLDER.json')
         .then(function(r) { return r.json(); })
         .then(function(data) {
+            var baseColor = data.base_color || '#667eea';
+            var textColor = data.text_color || '#ffffff';
+            var endColor = shiftHue(baseColor, 40);
+            var trackColor = 'rgba(' +
+                parseInt(textColor.slice(1, 3), 16) + ',' +
+                parseInt(textColor.slice(3, 5), 16) + ',' +
+                parseInt(textColor.slice(5, 7), 16) + ',0.3)';
             var progressHtml = '';
             if (data.target_amount_xmr) {
                 var pct = Math.min(
@@ -26,8 +74,8 @@ WIDGET_JS_TEMPLATE = """
                 );
                 progressHtml =
                     '<div style="margin-top:12px;">' +
-                    '<div style="background:rgba(255,255,255,0.3);border-radius:8px;overflow:hidden;height:8px;">' +
-                    '<div style="background:#fff;height:8px;width:' + pct.toFixed(1) + '%;"></div>' +
+                    '<div style="background:' + trackColor + ';border-radius:8px;overflow:hidden;height:8px;">' +
+                    '<div style="background:' + textColor + ';height:8px;width:' + pct.toFixed(1) + '%;"></div>' +
                     '</div>' +
                     '<div style="font-size:12px;opacity:0.9;margin-top:4px;">' +
                     data.total_received_xmr + ' / ' + data.target_amount_xmr + ' XMR' +
@@ -35,8 +83,8 @@ WIDGET_JS_TEMPLATE = """
             }
             container.innerHTML = '<div style="' +
                 'font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;' +
-                'background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);' +
-                'color: white; padding: 24px; border-radius: 12px;' +
+                'background: linear-gradient(135deg, ' + baseColor + ' 0%, ' + endColor + ' 100%);' +
+                'color: ' + textColor + '; padding: 24px; border-radius: 12px;' +
                 'box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px;">' +
                 '<div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">' +
                 '&#128176; ' + data.label + '</div>' +
@@ -111,6 +159,8 @@ async def get_widget_json(
         else None,
         "transaction_count": tx_count,
         "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
+        "base_color": get_widget_base_color(),
+        "text_color": get_widget_text_color(),
     }
 
     return JSONResponse(

@@ -144,3 +144,27 @@ class DateTimeFormatResponse(BaseModel):
     """Response for datetime format setting."""
 
     pattern: str
+
+
+class WidgetColorUpdate(BaseModel):
+    """Request body for updating widget base color."""
+
+    color: str
+
+
+class WidgetColorResponse(BaseModel):
+    """Response for widget color setting."""
+
+    color: str
+
+
+class WidgetTextColorUpdate(BaseModel):
+    """Request body for updating widget text color."""
+
+    color: str
+
+
+class WidgetTextColorResponse(BaseModel):
+    """Response for widget text color setting."""
+
+    color: str

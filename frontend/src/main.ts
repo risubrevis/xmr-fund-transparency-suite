@@ -4,6 +4,7 @@ import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
 import Dashboard from "./pages/Dashboard.vue";
 import Settings from "./pages/Settings.vue";
+import Widget from "./pages/Widget.vue";
 import { useFundStore } from "./stores/fund";
 import { isApiKeySet } from "./lib/api";
 import "./assets/main.css";
@@ -16,6 +17,12 @@ const router = createRouter({
       path: "/settings",
       name: "settings",
       component: Settings,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/widget",
+      name: "widget",
+      component: Widget,
       meta: { requiresAuth: true },
     },
   ],

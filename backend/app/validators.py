@@ -103,6 +103,19 @@ def format_datetime(dt, pattern: str) -> str:
     return TOKEN_RE.sub(_replace, pattern)
 
 
+def validate_hex_color(color: str) -> tuple[bool, str]:
+    """Validate a hex color string (e.g., #667eea).
+
+    Returns (is_valid, error_message). If valid, error_message is empty.
+    """
+    if not color or not color.strip():
+        return False, "Color cannot be empty"
+    color = color.strip()
+    if not re.match(r"^#[0-9a-fA-F]{6}$", color):
+        return False, "Invalid hex color format. Expected: #aabbcc"
+    return True, ""
+
+
 # Example patterns for reference
 FORMAT_EXAMPLES = [
     {"pattern": "YYYY-MM-DD HH:mm:ss", "output": "2026-06-17 14:30:00"},

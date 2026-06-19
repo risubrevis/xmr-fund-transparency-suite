@@ -9,6 +9,19 @@
           </router-link>
           <div class="flex items-center space-x-4">
             <router-link
+              to="/widget"
+              class="nav-link"
+              :class="{
+                'text-white bg-monero-orange/20 rounded-md':
+                  $route.path === '/widget',
+              }"
+            >
+              <div class="flex items-center space-x-1">
+                <Code2 :size="16" />
+                <span>Widget</span>
+              </div>
+            </router-link>
+            <router-link
               to="/settings"
               class="nav-link"
               :class="{
@@ -49,7 +62,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter } from "vue-router";
-import { Landmark, Settings, LogOut } from "@lucide/vue";
+import { Landmark, Settings, Code2, LogOut } from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
 
 const router = useRouter();
