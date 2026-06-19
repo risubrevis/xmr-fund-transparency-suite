@@ -61,6 +61,7 @@ import type { Transaction } from "@/lib/api";
 import type { TimeInterval } from "@/composables/useTransactionAggregation";
 import { useTransactionAggregation } from "@/composables/useTransactionAggregation";
 import { useChartPreferences } from "@/composables/useChartPreferences";
+import { formatXmr } from "@/lib/format";
 
 ChartJS.register(
   BarElement,
@@ -113,7 +114,7 @@ const chartOptions = computed(() => ({
     title: { display: false },
     tooltip: {
       callbacks: {
-        label: (ctx: any) => `${ctx.parsed.y.toFixed(4)} XMR`,
+        label: (ctx: any) => `${formatXmr(ctx.parsed.y)} XMR`,
       },
     },
   },

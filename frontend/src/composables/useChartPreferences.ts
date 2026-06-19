@@ -4,6 +4,7 @@ import type { TimeInterval } from "@/composables/useTransactionAggregation";
 const STORAGE_KEY = "xmr_chart_prefs";
 
 type ViewMode = "bar" | "gauge";
+type YScaleType = "linear" | "logarithmic";
 
 type GoalViewMode = ViewMode;
 
@@ -11,12 +12,14 @@ interface ChartPreferences {
   volumeInterval: TimeInterval;
   sizeInterval: TimeInterval;
   goalViewMode: GoalViewMode;
+  cumulativeYScale: YScaleType;
 }
 
 const defaults: ChartPreferences = {
   volumeInterval: "1m",
   sizeInterval: "1m",
   goalViewMode: "bar",
+  cumulativeYScale: "linear",
 };
 
 function load(): ChartPreferences {
@@ -45,12 +48,14 @@ const prefs = load();
 const volumeInterval: Ref<TimeInterval> = ref(prefs.volumeInterval);
 const sizeInterval: Ref<TimeInterval> = ref(prefs.sizeInterval);
 const goalViewMode: Ref<GoalViewMode> = ref(prefs.goalViewMode);
+const cumulativeYScale: Ref<YScaleType> = ref(prefs.cumulativeYScale);
 
-watch([volumeInterval, sizeInterval, goalViewMode], () => {
+watch([volumeInterval, sizeInterval, goalViewMode, cumulativeYScale], () => {
   save({
     volumeInterval: volumeInterval.value,
     sizeInterval: sizeInterval.value,
     goalViewMode: goalViewMode.value,
+    cumulativeYScale: cumulativeYScale.value,
   });
 });
 
@@ -59,5 +64,6 @@ export function useChartPreferences() {
     volumeInterval,
     sizeInterval,
     goalViewMode,
+    cumulativeYScale,
   };
 }

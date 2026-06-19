@@ -1,5 +1,6 @@
 import { computed, type Ref } from "vue";
 import type { Transaction } from "@/lib/api";
+import { formatChartDate } from "@/lib/format";
 
 export type TimeInterval = "24h" | "1w" | "1m" | "1y" | "all";
 export type SizeTier = "micro" | "medium" | "large" | "whale";
@@ -40,19 +41,9 @@ function aggregateByPeriod(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
   );
 
-  const bucketFmt: Record<TimeInterval, Intl.DateTimeFormatOptions> = {
-    "24h": { hour: "2-digit", minute: "2-digit", hour12: false },
-    "1w": { month: "short", day: "numeric" },
-    "1m": { month: "short", day: "numeric" },
-    "1y": { month: "short", year: "2-digit" },
-    all: { month: "short", year: "2-digit" },
-  };
-
-  const fmt = bucketFmt[interval];
-
   const buckets = new Map<string, number>();
   for (const tx of sorted) {
-    const key = new Date(tx.timestamp).toLocaleDateString(undefined, fmt);
+    const key = formatChartDate(new Date(tx.timestamp), interval);
     buckets.set(key, (buckets.get(key) || 0) + parseFloat(tx.amount_xmr));
   }
 
@@ -77,7 +68,7 @@ function cumulativeOverTime(txs: Transaction[]): {
 
   for (const tx of sorted) {
     cumulative += parseFloat(tx.amount_xmr);
-    labels.push(new Date(tx.timestamp).toLocaleDateString());
+    labels.push(formatChartDate(new Date(tx.timestamp), "1m"));
     values.push(cumulative);
   }
 

@@ -262,10 +262,26 @@ async function loadTransactions() {
   if (!currentFund.value) return;
   loadingTransactions.value = true;
   try {
-    const response = await fundsApi.transactions(currentFund.value.id);
-    transactions.value = response.data.items;
-    hasMore.value = response.data.has_more;
-    nextCursor.value = response.data.next_cursor;
+    // Load all transactions for charts by paginating through all pages
+    const allTransactions: Transaction[] = [];
+    let cursor: string | null | undefined = undefined;
+    let hasMorePages = true;
+
+    while (hasMorePages) {
+      const response = await fundsApi.transactions(
+        currentFund.value.id,
+        cursor as string | undefined,
+        100,
+      );
+      allTransactions.push(...response.data.items);
+      hasMorePages = response.data.has_more;
+      cursor = response.data.next_cursor;
+    }
+
+    transactions.value = allTransactions;
+    // Table pagination: first page is already loaded, mark remaining
+    hasMore.value = allTransactions.length > 0;
+    nextCursor.value = null;
   } catch {
     // Transactions may not exist yet
   } finally {

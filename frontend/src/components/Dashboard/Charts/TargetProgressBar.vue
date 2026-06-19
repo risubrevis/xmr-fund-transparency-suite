@@ -61,7 +61,9 @@
           </div>
         </div>
         <p class="text-sm text-gray-600 mt-2 text-center">
-          {{ received }} / {{ target }} XMR ({{ displayPercent }}%)
+          {{ formatXmr(received) }} / {{ formatXmr(target) }} XMR ({{
+            displayPercent
+          }}%)
         </p>
       </div>
 
@@ -75,7 +77,9 @@
           <span class="text-2xl font-bold text-gray-900"
             >{{ displayPercent }}%</span
           >
-          <span class="text-sm text-gray-500">{{ received }} XMR</span>
+          <span class="text-sm text-gray-500"
+            >{{ formatXmr(received) }} XMR</span
+          >
         </div>
       </div>
     </template>
@@ -94,6 +98,7 @@ import {
 import { Target, Loader2 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { useChartPreferences } from "@/composables/useChartPreferences";
+import { formatXmr } from "@/lib/format";
 
 ChartJS.register(ArcElement, Tooltip, DoughnutController);
 

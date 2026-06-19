@@ -91,6 +91,7 @@ import {
   SIZE_TIERS,
 } from "@/composables/useTransactionAggregation";
 import { useChartPreferences } from "@/composables/useChartPreferences";
+import { formatXmr } from "@/lib/format";
 
 ChartJS.register(ArcElement, Tooltip, DoughnutController);
 
@@ -152,7 +153,7 @@ const chartOptions = computed(() => ({
         label: (ctx: any) => {
           const tier = TIER_ORDER[ctx.dataIndex];
           const data = sizeData(selectedInterval.value).value;
-          return `${TIER_NAMES[tier]}: ${data[tier].count} donations (${data[tier].total.toFixed(4)} XMR)`;
+          return `${TIER_NAMES[tier]}: ${data[tier].count} donations (${formatXmr(data[tier].total)} XMR)`;
         },
       },
     },

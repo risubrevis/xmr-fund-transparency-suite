@@ -1,10 +1,30 @@
 <template>
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-    <div class="flex items-center gap-2 mb-4">
-      <TrendingUp class="w-5 h-5 text-orange-500" />
-      <h3 class="text-lg font-semibold text-gray-900">
-        Cumulative Received XMR
-      </h3>
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-2">
+        <TrendingUp class="w-5 h-5 text-orange-500" />
+        <h3 class="text-lg font-semibold text-gray-900">
+          Cumulative Received XMR
+        </h3>
+      </div>
+      <div class="flex gap-1">
+        <Button
+          variant="outline"
+          size="xs"
+          :class="yScale === 'linear' ? 'bg-gray-100' : ''"
+          @click="yScale = 'linear'"
+        >
+          Linear
+        </Button>
+        <Button
+          variant="outline"
+          size="xs"
+          :class="yScale === 'logarithmic' ? 'bg-gray-100' : ''"
+          @click="yScale = 'logarithmic'"
+        >
+          Log
+        </Button>
+      </div>
     </div>
 
     <div v-if="loading" class="h-64 flex items-center justify-center">
@@ -32,19 +52,24 @@ import {
   LineElement,
   PointElement,
   LinearScale,
+  LogarithmicScale,
   CategoryScale,
   Title,
   Tooltip,
   Filler,
 } from "chart.js";
 import { TrendingUp, Loader2 } from "@lucide/vue";
+import { Button } from "@/components/ui/button";
 import type { Transaction } from "@/lib/api";
 import { useTransactionAggregation } from "@/composables/useTransactionAggregation";
+import { useChartPreferences } from "@/composables/useChartPreferences";
+import { formatXmr } from "@/lib/format";
 
 ChartJS.register(
   LineElement,
   PointElement,
   LinearScale,
+  LogarithmicScale,
   CategoryScale,
   Title,
   Tooltip,
@@ -57,6 +82,8 @@ const props = defineProps<{
   loading: boolean;
 }>();
 
+const { cumulativeYScale: yScale } = useChartPreferences();
+
 const transactionsRef = computed(() => props.transactions);
 const { cumulativeData } = useTransactionAggregation(transactionsRef);
 
@@ -68,15 +95,19 @@ const chartOptions = computed(() => ({
     title: { display: false },
     tooltip: {
       callbacks: {
-        label: (ctx: any) => `${ctx.parsed.y.toFixed(4)} XMR`,
+        label: (ctx: any) => `${formatXmr(ctx.parsed.y)} XMR`,
       },
     },
   },
   scales: {
     y: {
-      beginAtZero: true,
+      type: yScale.value as "linear" | "logarithmic",
+      beginAtZero: yScale.value === "linear",
       title: { display: true, text: "XMR" },
       grid: { color: "rgba(0,0,0,0.06)" },
+      ticks: {
+        callback: (value: any) => formatXmr(value, 2),
+      },
     },
     x: {
       title: { display: false },
@@ -103,13 +134,13 @@ const chartData = computed(() => {
           0,
           chartArea.bottom,
         );
-        gradient.addColorStop(0, "rgba(255,102,0,0.3)");
-        gradient.addColorStop(1, "rgba(255,102,0,0)");
+        gradient.addColorStop(0, "rgba(255,102,0,0.4)");
+        gradient.addColorStop(1, "rgba(255,102,0,0.02)");
         return gradient;
       },
       fill: true,
       tension: 0.3,
-      pointRadius: 2,
+      pointRadius: values.length > 50 ? 0 : 2,
       pointHoverRadius: 4,
     },
   ];
