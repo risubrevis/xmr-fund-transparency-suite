@@ -79,13 +79,17 @@ class MoneroScanner:
 
     async def _ensure_wallet_open(self) -> None:
         """Open the view-only wallet before scanning.
-        
+
         Always attempts to open the wallet. If already open, monero-wallet-rpc
         silently succeeds. After opening, waits briefly for wallet to sync.
         """
         try:
-            result = await self._rpc_call("open_wallet", {"filename": "viewonly", "password": ""})
-            logger.info("wallet_opened", result=str(result)[:100] if result else "empty")
+            result = await self._rpc_call(
+                "open_wallet", {"filename": "viewonly", "password": ""}
+            )
+            logger.info(
+                "wallet_opened", result=str(result)[:100] if result else "empty"
+            )
             # Give the wallet time to start syncing with the daemon
             await asyncio.sleep(5)
         except Exception as e:
@@ -99,8 +103,14 @@ class MoneroScanner:
         """
         Sync the single fund.
         Returns the number of new transactions found.
+
+        Only records transactions whose destination address matches
+        the fund's deposit_address, filtering out transfers to other
+        addresses in the same wallet (e.g. subaddresses).
         """
         from_height = fund.last_scanned_height or fund.start_height
+        # Resolve the effective deposit address — fallback to primary_address
+        effective_address = fund.deposit_address or fund.primary_address
 
         result = await self._rpc_call(
             "get_transfers",
@@ -114,8 +124,21 @@ class MoneroScanner:
 
         incoming = result.get("in", [])
         new_count = 0
+        skipped_count = 0
 
         for tx in incoming:
+            # Filter: only record transactions sent to the deposit address
+            tx_address = tx.get("address", "")
+            if tx_address != effective_address:
+                skipped_count += 1
+                logger.debug(
+                    "skipping_tx_address_mismatch",
+                    txid=tx["txid"],
+                    tx_address=tx_address[:12] + "...",
+                    expected_address=effective_address[:12] + "...",
+                )
+                continue
+
             exists = await db.execute(
                 select(Transaction).where(
                     Transaction.txid == tx["txid"], Transaction.fund_id == fund.id
@@ -138,7 +161,8 @@ class MoneroScanner:
             db.add(new_tx)
             new_count += 1
 
-        # Update scan metadata
+        # Update scan metadata — advance height based on ALL incoming transfers,
+        # not just filtered ones, so we don't re-process skipped blocks
         fund.last_scanned_height = max(
             (tx.get("height", 0) for tx in incoming),
             default=from_height,
@@ -151,6 +175,7 @@ class MoneroScanner:
             "scan_complete",
             fund_id=str(fund.id),
             new_tx_count=new_count,
+            skipped_count=skipped_count,
             last_scanned_height=fund.last_scanned_height,
         )
 

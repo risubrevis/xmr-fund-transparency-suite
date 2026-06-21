@@ -90,6 +90,21 @@ class FundUpdate(BaseModel):
         None,
         description="Optional fundraising target in XMR. Set to null to clear.",
     )
+    deposit_address: str | None = Field(
+        None,
+        min_length=95,
+        max_length=95,
+        description="Update the deposit address. Changing this will reset scan history and re-scan.",
+    )
+
+    @field_validator("deposit_address")
+    @classmethod
+    def validate_deposit_address_format(cls, v: str | None) -> str | None:
+        import re
+
+        if v is not None and not re.match(r"^[48AB][1-9A-HJ-NP-Za-km-z]{94}$", v):
+            raise ValueError("Invalid Monero deposit address format")
+        return v
 
     @field_validator("target_amount_xmr")
     @classmethod

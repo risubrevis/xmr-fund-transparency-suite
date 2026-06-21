@@ -12,6 +12,8 @@ from sqlalchemy.orm import DeclarativeBase
 class MockRPCServer:
     """Emulate monero-wallet-rpc responses for tests."""
 
+    PRIMARY_ADDRESS = "4AdUndXHHZ9cf2bqQ3P7CF2F9xK2s5f2RMZZU6L5HraAB3Z2TL65E6R4E6T1GtGcY3UphTB2C5sZfrYj7Y52bHvMFbS4fQ"
+
     TRANSFERS_IN = [
         {
             "txid": "a" * 64,
@@ -20,6 +22,7 @@ class MockRPCServer:
             "timestamp": 1718500000,
             "height": 3280400,
             "unlock_time": 0,
+            "address": PRIMARY_ADDRESS,
         },
         {
             "txid": "b" * 64,
@@ -28,6 +31,7 @@ class MockRPCServer:
             "timestamp": 1718413640,
             "height": 3280390,
             "unlock_time": 0,
+            "address": PRIMARY_ADDRESS,
         },
     ]
 

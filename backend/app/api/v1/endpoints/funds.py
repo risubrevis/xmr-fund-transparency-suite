@@ -168,24 +168,51 @@ async def update_fund(
     db: AsyncSession = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> FundResponse:
-    """Update fund label, description, or active status."""
+    """Update fund label, description, active status, or deposit address."""
     result = await db.execute(select(Fund).where(Fund.id == fund_id))
     fund = result.scalar_one_or_none()
 
     if not fund:
         raise HTTPException(status_code=404, detail="Fund not found")
 
+    # Use exclude_unset to distinguish "not provided" from "explicitly null"
+    unset_fields = body.model_fields_set
     if body.label is not None:
         fund.label = body.label
     if body.is_active is not None:
         fund.is_active = body.is_active
-
-    # Use exclude_unset to distinguish "not provided" from "explicitly null"
-    unset_fields = body.model_fields_set
     if "target_amount_xmr" in unset_fields:
         fund.target_amount_xmr = body.target_amount_xmr
     if "description" in unset_fields:
         fund.description = body.description
+
+    # Changing deposit_address requires re-scanning from start_height,
+    # so delete existing transactions and reset scan progress
+    if "deposit_address" in unset_fields and body.deposit_address is not None:
+        if body.deposit_address != (fund.deposit_address or fund.primary_address):
+            logger.info(
+                "deposit_address_changed",
+                fund_id=str(fund.id),
+                old_address=(fund.deposit_address or fund.primary_address)[:12] + "...",
+                new_address=body.deposit_address[:12] + "...",
+            )
+            # Delete all transactions — they were for the old address
+            await db.execute(
+                Transaction.__table__.delete().where(Transaction.fund_id == fund_id)
+            )
+            # Reset scan progress so the scanner re-scans from start_height
+            fund.last_scanned_height = None
+            fund.last_scan_at = None
+            fund.scan_error = None
+            fund.deposit_address = body.deposit_address
+            logger.info(
+                "scan_reset_for_deposit_address",
+                fund_id=str(fund.id),
+                start_height=fund.start_height,
+            )
+        else:
+            # No actual change, just set it
+            fund.deposit_address = body.deposit_address
 
     await db.commit()
     await db.refresh(fund)

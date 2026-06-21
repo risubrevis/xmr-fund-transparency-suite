@@ -120,6 +120,7 @@ export const fundsApi = {
       description?: string | null;
       is_active?: boolean;
       target_amount_xmr?: string | null;
+      deposit_address?: string | null;
     },
   ) => api.patch<Fund>(`/api/v1/funds/${id}`, data),
 
