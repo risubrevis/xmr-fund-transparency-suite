@@ -219,6 +219,29 @@ class WidgetTextColorResponse(BaseModel):
     color: str
 
 
+class PostCreate(BaseModel):
+    """Request body for creating a new post."""
+
+    body: str = Field(..., min_length=1, max_length=2048)
+
+
+class PostUpdate(BaseModel):
+    """Request body for updating a post."""
+
+    body: str = Field(..., min_length=1, max_length=2048)
+
+
+class PostResponse(BaseModel):
+    """Post data returned in API responses."""
+
+    id: uuid.UUID
+    body: str
+    created_at: datetime
+    updated_at: datetime | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class FilterMetadata(BaseModel):
     """Metadata describing active filters for export reports."""
 

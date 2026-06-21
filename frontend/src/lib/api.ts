@@ -254,6 +254,24 @@ export function publicWidgetExportUrl(
   return `${base}/widget/${publicUuid}/export/${format}`;
 }
 
+export interface Post {
+  id: string;
+  body: string;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export const postsApi = {
+  list: () => api.get<Post[]>("/api/v1/posts"),
+
+  create: (data: { body: string }) => api.post<Post>("/api/v1/posts", data),
+
+  update: (id: string, data: { body: string }) =>
+    api.patch<Post>(`/api/v1/posts/${id}`, data),
+
+  delete: (id: string) => api.delete(`/api/v1/posts/${id}`),
+};
+
 export const healthApi = {
   check: () => api.get("/health"),
 };

@@ -57,6 +57,7 @@ def create_app() -> FastAPI:
         exports,
         funds,
         health,
+        posts,
         reports,
         transactions,
         widget,
@@ -68,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(reports.router, prefix="/api/v1")
     app.include_router(exports.router, prefix="/api/v1")
     app.include_router(events.router, prefix="/api/v1")
+    app.include_router(posts.router, prefix="/api/v1")
     app.include_router(settings_mod.router, prefix="/api/v1")
     app.include_router(widget.router)
     app.include_router(health.router)

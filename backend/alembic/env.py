@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from alembic import context
 from app.database import Base
-from app.models import Fund, Transaction
+from app.models import Fund, Post, Transaction
 from sqlalchemy import engine_from_config, pool
 
 config = context.config

@@ -64,3 +64,18 @@ class Transaction(Base):
     height: Mapped[int] = mapped_column(nullable=False, index=True)
 
     fund: Mapped["Fund"] = relationship(back_populates="transactions")
+
+
+class Post(Base):
+    """A news/announcement post."""
+
+    __tablename__ = "posts"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    body: Mapped[str] = mapped_column(String(2048), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), onupdate=func.now()
+    )

@@ -3,6 +3,7 @@ import { createPinia } from "pinia";
 import { createRouter, createWebHistory } from "vue-router";
 import App from "./App.vue";
 import Dashboard from "./pages/Dashboard.vue";
+import News from "./pages/News.vue";
 import Settings from "./pages/Settings.vue";
 import Widget from "./pages/Widget.vue";
 import { useFundStore } from "./stores/fund";
@@ -13,6 +14,12 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", name: "dashboard", component: Dashboard },
+    {
+      path: "/news",
+      name: "news",
+      component: News,
+      meta: { requiresAuth: true },
+    },
     {
       path: "/settings",
       name: "settings",
