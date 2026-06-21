@@ -1,5 +1,8 @@
+import base64
+import io
 from datetime import datetime, timezone
 
+import qrcode
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import func, select
@@ -12,7 +15,56 @@ from app.settings import get_widget_base_color, get_widget_text_color
 
 router = APIRouter()
 
+
+def _generate_qr_data_url(data: str, size: int = 200) -> str:
+    """Generate a QR code as a base64 PNG data URL."""
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        box_size=6,
+        border=2,
+    )
+    qr.add_data(data)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="#000000", back_color="#ffffff")
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+    return f"data:image/png;base64,{b64}"
+
+
 WIDGET_JS_TEMPLATE = """
+function xmrCopyAddr(btn) {
+    var addr = btn.getAttribute('data-addr');
+    function done() { btn.textContent = 'Copy Address'; }
+    function fallback() {
+        var ta = document.createElement('textarea');
+        ta.value = addr;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        btn.textContent = 'Copied!';
+        setTimeout(done, 2000);
+    }
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(addr).then(function() {
+                btn.textContent = 'Copied!';
+                setTimeout(done, 2000);
+            }).catch(fallback);
+        } else {
+            fallback();
+        }
+    } catch(e) {
+        fallback();
+    }
+}
+
 (function() {
     var container = document.getElementById('xmr-fund-widget');
     if (!container) return;
@@ -82,21 +134,33 @@ WIDGET_JS_TEMPLATE = """
                     data.total_received_xmr + ' / ' + data.target_amount_xmr + ' XMR' +
                     '</div></div>';
             }
+            var addrShort = data.deposit_address.slice(0, 10) + '...' + data.deposit_address.slice(-10);
+            var rightHtml =
+                '<div style="display:flex;flex-direction:column;align-items:center;min-width:140px;">' +
+                '<img src="' + data.qr_code + '" alt="QR Code" style="width:140px;height:140px;border-radius:8px;background:#fff;padding:4px;" />' +
+                '<div style="font-size:10px;opacity:0.7;word-break:break-all;margin-top:8px;text-align:center;">' +
+                addrShort + '</div>' +
+                '<button data-addr="' + data.deposit_address + '" onclick="xmrCopyAddr(this)" ' +
+                'style="margin-top:6px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.9;">Copy Address</button>' +
+                '</div>';
             container.innerHTML = '<div style="' +
                 'font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;' +
                 'background: linear-gradient(135deg, ' + baseColor + ' 0%, ' + endColor + ' 100%);' +
                 'color: ' + textColor + '; padding: 24px; border-radius: 12px;' +
-                'box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px;">' +
+                'box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px;' +
+                'display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">' +
+                '<div style="flex:1;min-width:200px;">' +
                 '<div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">' +
-                                '&#128176; ' + data.label + '</div>' +
-                                (data.description ? '<div style="font-size: 12px; opacity: 0.8; margin-bottom: 6px;">' + data.description + '</div>' : '') +
+                '&#128176; ' + data.label + '</div>' +
+                (data.description ? '<div style="font-size: 12px; opacity: 0.8; margin-bottom: 6px;">' + data.description + '</div>' : '') +
                 '<div style="font-size: 36px; font-weight: bold; margin-bottom: 8px;">' +
                 data.total_received_xmr + ' XMR</div>' +
                 progressHtml +
-                '<div style="font-size: 12px; opacity: 0.7; word-break: break-all; margin-bottom: 4px;">' +
-                data.deposit_address + '</div>' +
-                '<div style="font-size: 12px; opacity: 0.8;">' +
-                'Updated: ' + data.last_updated + '</div></div>';
+                '<div style="font-size: 12px; opacity: 0.8; margin-top: 8px;">' +
+                'Updated: ' + data.last_updated + '</div>' +
+                '</div>' +
+                rightHtml +
+                '</div>';
         })
         .catch(function(err) {
             container.innerHTML = '<div style="color: red;">Failed to load widget</div>';
@@ -157,10 +221,16 @@ async def get_widget_json(
     )
     tx_count = tx_count_result.scalar()
 
+    deposit_addr = fund.deposit_address or fund.primary_address
+
+    # Monero URI scheme: monero:<address> — recognized by wallet apps
+    qr_data_url = _generate_qr_data_url(f"monero:{deposit_addr}")
+
     data = {
         "label": fund.label,
         "description": fund.description or "",
-        "deposit_address": fund.deposit_address or fund.primary_address,
+        "deposit_address": deposit_addr,
+        "qr_code": qr_data_url,
         "total_received_xmr": f"{total_xmr:.2f}",
         "target_amount_xmr": f"{fund.target_amount_xmr:.2f}"
         if fund.target_amount_xmr is not None

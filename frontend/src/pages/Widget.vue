@@ -41,6 +41,9 @@
         :fund-description="currentFund.description"
         :total-xmr="currentFund.stats?.total_received_xmr || '0.00'"
         :target-amount-xmr="currentFund.target_amount_xmr"
+        :deposit-address="
+          currentFund.deposit_address || currentFund.primary_address
+        "
         :base-color="widgetColor"
         :text-color="textColor"
       />

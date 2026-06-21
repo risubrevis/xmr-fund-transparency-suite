@@ -8,34 +8,70 @@
 
     <!-- Widget Preview -->
     <div
-      class="mb-6 p-6 rounded-xl"
+      class="mb-6 rounded-xl overflow-hidden"
       :style="{ background: gradientStyle, color: textColor }"
     >
-      <div class="flex items-center space-x-2 text-sm opacity-90 mb-2">
-        <Coins :size="16" />
-        <span>{{ fundLabel }}</span>
-      </div>
-      <div v-if="fundDescription" class="text-sm opacity-80 mb-2">
-        {{ fundDescription }}
-      </div>
-      <div class="text-3xl font-bold mb-2">{{ totalXmr }} XMR</div>
-      <div v-if="targetAmountXmr" class="mt-1 mb-2">
-        <div class="text-xs opacity-80 mb-1">
-          Target: {{ targetAmountXmr }} XMR
+      <div class="flex flex-col md:flex-row gap-5 p-6">
+        <!-- Left: main info -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center space-x-2 text-sm opacity-90 mb-2">
+            <Coins :size="16" />
+            <span>{{ fundLabel }}</span>
+          </div>
+          <div v-if="fundDescription" class="text-sm opacity-80 mb-2">
+            {{ fundDescription }}
+          </div>
+          <div class="text-3xl font-bold mb-2">{{ totalXmr }} XMR</div>
+          <div v-if="targetAmountXmr" class="mt-1 mb-2">
+            <div class="text-xs opacity-80 mb-1">
+              Target: {{ targetAmountXmr }} XMR
+            </div>
+            <div
+              class="w-full rounded-full h-2"
+              :style="{ background: trackColor }"
+            >
+              <div
+                class="h-2 rounded-full transition-all"
+                :style="{ width: progressPct + '%', background: textColor }"
+              ></div>
+            </div>
+          </div>
+          <div class="flex items-center space-x-1 text-xs opacity-80 mt-2">
+            <Clock :size="12" />
+            <span>Updated: just now</span>
+          </div>
         </div>
-        <div
-          class="w-full rounded-full h-2"
-          :style="{ background: trackColor }"
-        >
+
+        <!-- Right: QR code + address -->
+        <div class="flex flex-col items-center shrink-0">
           <div
-            class="h-2 rounded-full transition-all"
-            :style="{ width: progressPct + '%', background: textColor }"
-          ></div>
+            class="bg-white rounded-lg p-1.5"
+            style="box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15)"
+          >
+            <img
+              v-if="qrDataUrl"
+              :src="qrDataUrl"
+              alt="QR Code"
+              class="w-[140px] h-[140px] block"
+            />
+          </div>
+          <div
+            class="text-[10px] opacity-70 mt-2 text-center break-all max-w-[160px]"
+          >
+            {{ displayAddress }}
+          </div>
+          <button
+            class="mt-1.5 text-[11px] px-2.5 py-1 rounded-md border cursor-pointer transition-colors"
+            :style="{
+              borderColor: textColor,
+              color: textColor,
+              background: 'transparent',
+            }"
+            @click="copyAddress"
+          >
+            {{ copyLabel }}
+          </button>
         </div>
-      </div>
-      <div class="flex items-center space-x-1 text-xs opacity-80">
-        <Clock :size="12" />
-        <span>Updated: just now</span>
       </div>
     </div>
 
@@ -72,8 +108,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref, onMounted, watch } from "vue";
 import { Coins, Clock, Info } from "@lucide/vue";
+import QRCode from "qrcode";
 
 const props = withDefaults(
   defineProps<{
@@ -82,6 +119,7 @@ const props = withDefaults(
     fundDescription?: string | null;
     totalXmr: string;
     targetAmountXmr?: string | null;
+    depositAddress?: string;
     baseColor?: string;
     textColor?: string;
   }>(),
@@ -90,6 +128,83 @@ const props = withDefaults(
     textColor: "#ffffff",
   },
 );
+
+const qrDataUrl = ref("");
+const copyLabel = ref("Copy Address");
+
+const displayAddress = computed(() => {
+  if (!props.depositAddress) return "";
+  return (
+    props.depositAddress.slice(0, 10) + "..." + props.depositAddress.slice(-10)
+  );
+});
+
+async function generateQr() {
+  if (!props.depositAddress) {
+    qrDataUrl.value = "";
+    return;
+  }
+  try {
+    // monero:<address> URI scheme — recognized by Monero wallet apps
+    qrDataUrl.value = await QRCode.toDataURL(`monero:${props.depositAddress}`, {
+      width: 280,
+      margin: 1,
+      errorCorrectionLevel: "M",
+      color: {
+        dark: "#000000",
+        light: "#ffffff",
+      },
+    });
+  } catch {
+    qrDataUrl.value = "";
+  }
+}
+
+onMounted(generateQr);
+watch(() => props.depositAddress, generateQr);
+
+async function copyAddress() {
+  if (!props.depositAddress) return;
+  try {
+    // navigator.clipboard requires secure context (HTTPS/localhost)
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(props.depositAddress);
+    } else {
+      fallbackCopy(props.depositAddress);
+    }
+    copyLabel.value = "Copied!";
+    setTimeout(() => {
+      copyLabel.value = "Copy Address";
+    }, 2000);
+  } catch {
+    // Try fallback if modern API fails
+    try {
+      fallbackCopy(props.depositAddress);
+      copyLabel.value = "Copied!";
+      setTimeout(() => {
+        copyLabel.value = "Copy Address";
+      }, 2000);
+    } catch {
+      copyLabel.value = "Failed";
+      setTimeout(() => {
+        copyLabel.value = "Copy Address";
+      }, 2000);
+    }
+  }
+}
+
+function fallbackCopy(text: string) {
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  document.execCommand("copy");
+  document.body.removeChild(textarea);
+}
 
 const progressPct = computed(() => {
   if (!props.targetAmountXmr) return 0;
