@@ -1,3 +1,14 @@
+# XMR Fund Transparency Suite — unified Docker Compose configuration.
+#
+# Production (default):
+#   docker compose up -d
+#
+# Development (hot-reload, debug logs):
+#   ./scripts/setup.sh --dev
+#
+# Variable defaults are set for production. Development overrides are
+# exported by setup.sh when run with --dev.
+
 services:
   postgres:
     image: postgres:15-alpine
@@ -35,7 +46,7 @@ services:
   monero-wallet-rpc:
     image: ghcr.io/sethforprivacy/simple-monero-wallet-rpc:latest
     command: >
-      --daemon-address xmr.letmego.me:18089
+      --daemon-address ${MONERO_DAEMON_ADDRESS:-xmr.letmego.me:18089}
       --rpc-bind-port 18082
       --wallet-dir /home/monero
       --disable-rpc-login
@@ -49,7 +60,11 @@ services:
     restart: unless-stopped
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        INSTALL_DEV: ${INSTALL_DEV:-false}
     ports:
       - "8000:8000"
     environment:
@@ -60,8 +75,16 @@ services:
       VIEW_KEY_MASTER_SECRET: ${VIEW_KEY_MASTER_SECRET}
       SETTINGS_FILE_PATH: /app/data/settings.json
       SCAN_INTERVAL: "60"
-      LOG_LEVEL: INFO
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+      ENVIRONMENT: ${ENVIRONMENT:-local}
+      APP_URL: ${APP_URL:-localhost}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
+      COOKIE_SAMESITE: ${COOKIE_SAMESITE:-Strict}
+      SENTRY_DSN: ${SENTRY_DSN:-}
     volumes:
+      - ./backend:/app
       - ./data:/app/data
     depends_on:
       postgres:
@@ -70,12 +93,22 @@ services:
         condition: service_healthy
     networks:
       - xmrnet
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-unless-stopped}
+    command: ${BACKEND_COMMAND:-uvicorn app.main:app --host 0.0.0.0 --port 8000}
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: ${FRONTEND_TARGET:-production}
     ports:
-      - "3000:80"
+      - "3000:${FRONTEND_INTERNAL_PORT:-80}"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      API_PROXY_TARGET: ${API_PROXY_TARGET:-http://backend:8000}
+      APP_URL: ${APP_URL:-localhost}
     depends_on:
       - backend
     networks:
@@ -84,19 +117,29 @@ services:
   worker:
     build:
       context: ./backend
-      dockerfile: Dockerfile.worker
+      dockerfile: Dockerfile
+      args:
+        INSTALL_DEV: ${INSTALL_DEV:-false}
     environment:
       DATABASE_URL: postgresql+asyncpg://xmruser:${DB_PASSWORD}@postgres/xmrdashboard
       MONERO_RPC_URL: http://monero-wallet-rpc:18082/json_rpc
       SCAN_INTERVAL: "60"
-      LOG_LEVEL: INFO
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
       SKIP_MIGRATIONS: "true"
+      WAIT_FOR_DB: "true"
+      ENVIRONMENT: ${ENVIRONMENT:-local}
+      APP_URL: ${APP_URL:-localhost}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+    volumes:
+      - ./backend:/app
+    command: ${WORKER_COMMAND:-python -m worker.scanner}
     depends_on:
       postgres:
         condition: service_healthy
     networks:
       - xmrnet
-    restart: unless-stopped
+    restart: ${RESTART_POLICY:-unless-stopped}
 
 networks:
   xmrnet:

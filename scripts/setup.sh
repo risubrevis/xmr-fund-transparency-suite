@@ -42,7 +42,7 @@ Usage:
   $(basename "$0") [OPTION]
 
 Options:
-  --dev     Start in development mode (hot-reload, logs in foreground)
+  --dev     Start in development mode (hot-reload, debug logs)
   --init    Only prepare data directories, do not start containers
   --stop    Stop running containers
   --clean   Stop containers and delete all persistent data
@@ -58,11 +58,7 @@ done
 # ── Stop ─────────────────────────────────────────────────────────────────────
 if [[ "$ACTION" == "stop" ]]; then
     info "Stopping containers..."
-    if [[ "$DEV" == true ]]; then
-        docker compose -f docker-compose.dev.yml down
-    else
-        docker compose down
-    fi
+    docker compose down
     ok "Containers stopped."
     exit 0
 fi
@@ -79,7 +75,6 @@ if [[ "$ACTION" == "clean" ]]; then
     fi
 
     info "Stopping containers..."
-    docker compose -f docker-compose.dev.yml down -v 2>/dev/null || true
     docker compose down -v 2>/dev/null || true
 
     info "Removing data directories..."
@@ -107,40 +102,39 @@ mkdir -p postgres redis monero-wallet-rpc data
 # The bind-mounted host directory must be writable by that user.
 sudo chown -R 1000:1000 monero-wallet-rpc
 
-# postgres entrypoint (docker-entrypoint.sh) runs as root and chowns
-# the data directory to the postgres user (uid=70) automatically.
-
-# redis with --appendonly yes creates its data files under /data
-# and chowns them to the redis user (uid=999) automatically.
-
-# backend writes settings.json and other runtime data to /app/data
-# which maps to ./data on the host — owned by the host user.
-
 ok "Data directories ready."
 
 # ── Init-only mode ───────────────────────────────────────────────────────────
 if [[ "$INIT_ONLY" == true ]]; then
     echo ""
     info "Directories prepared. Start manually with:"
-    echo "  docker compose -f docker-compose.dev.yml up --build   # dev"
-    echo "  docker compose up -d --build                          # prod"
+    echo "  ./scripts/setup.sh            # production"
+    echo "  ./scripts/setup.sh --dev      # development"
     exit 0
 fi
 
 # ── Start containers ────────────────────────────────────────────────────────
 echo ""
 if [[ "$DEV" == true ]]; then
-    info "Starting in DEVELOPMENT mode (hot-reload, logs in foreground)..."
+    info "Starting in DEVELOPMENT mode (hot-reload, debug logs, foreground)..."
     echo ""
-    docker compose -f docker-compose.dev.yml up --build
+    export INSTALL_DEV=true
+    export FRONTEND_TARGET=dev
+    export FRONTEND_INTERNAL_PORT=3000
+    export LOG_LEVEL=DEBUG
+    export LOG_FORMAT=text
+    export RESTART_POLICY=no
+    export BACKEND_COMMAND="uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    export WORKER_COMMAND='watchfiles "python -m worker.scanner" /app/app /app/worker'
+    docker compose up --build
 else
     info "Starting in PRODUCTION mode (detached)..."
     echo ""
     docker compose up -d --build
     echo ""
     ok "Containers started."
-    info "Dashboard:    http://localhost:3000"
-    info "Backend API:  http://localhost:8000/docs"
+    info "Dashboard:    https://${APP_URL:-localhost}"
+    info "Backend API:  https://${APP_URL:-localhost}/docs"
     info "Monero RPC:   http://localhost:18082"
     echo ""
     info "View logs:    docker compose logs -f"

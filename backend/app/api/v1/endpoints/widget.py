@@ -5,6 +5,7 @@ from fastapi.responses import JSONResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import settings
 from app.database import get_db
 from app.models import Fund, Transaction
 from app.settings import get_widget_base_color, get_widget_text_color
@@ -56,7 +57,7 @@ WIDGET_JS_TEMPLATE = """
         return hslToHex(hsl[0] + degrees, hsl[1], hsl[2]);
     }
 
-    fetch('/widget/UUID_PLACEHOLDER.json')
+    fetch('APP_ORIGIN_PLACEHOLDER/widget/UUID_PLACEHOLDER.json')
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var baseColor = data.base_color || '#667eea';
@@ -114,7 +115,9 @@ async def get_widget_js(
     if not fund:
         raise HTTPException(status_code=404, detail="Fund not found")
 
-    widget_js = WIDGET_JS_TEMPLATE.replace("UUID_PLACEHOLDER", uuid)
+    widget_js = WIDGET_JS_TEMPLATE.replace("UUID_PLACEHOLDER", uuid).replace(
+        "APP_ORIGIN_PLACEHOLDER", settings.app_origin
+    )
 
     return Response(
         content=widget_js,

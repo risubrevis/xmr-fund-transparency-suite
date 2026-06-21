@@ -8,7 +8,7 @@
 # Usage:
 #   ./scripts/test-data.sh                # 50 transactions (default)
 #   ./scripts/test-data.sh --count=200    # 200 transactions
-#   ./scripts/test-data.sh --dev         # Use dev compose file
+#   ./scripts/test-data.sh --dev         # Use dev environment
 #   ./scripts/test-data.sh --dev --count=100
 
 set -euo pipefail
@@ -46,7 +46,7 @@ Usage:
 
 Options:
   --count=N   Number of transactions to generate (default: 50)
-  --dev       Use docker-compose.dev.yml
+  --dev       Use dev environment (INSTALL_DEV=true)
   -h          Show this help
 HELP
             exit 0
@@ -58,9 +58,10 @@ HELP
     esac
 done
 
-# ── Select compose file ─────────────────────────────────────────────────────
+# ── Select compose mode ──────────────────────────────────────────────────
 if [[ "$DEV" == true ]]; then
-    COMPOSE="docker compose -f docker-compose.dev.yml"
+    export INSTALL_DEV=true
+    COMPOSE="docker compose"
 else
     COMPOSE="docker compose"
 fi

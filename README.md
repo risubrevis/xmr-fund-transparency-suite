@@ -55,7 +55,13 @@ SCAN_INTERVAL=60
 ### Step 4: Start with Docker
 
 ```bash
-docker compose up -d
+./scripts/setup.sh
+```
+
+For development with hot-reload:
+
+```bash
+./scripts/setup.sh --dev
 ```
 
 ### Step 5: Create Your First Fund
@@ -113,8 +119,7 @@ xmr-fund-transparency-suite/
 │   ├── worker/
 │   │   └── scanner.py           # Background blockchain scanner
 │   ├── tests/                   # Test suite
-│   ├── Dockerfile                # Backend container
-│   ├── Dockerfile.worker         # Worker container
+│   ├── Dockerfile                # Backend & worker container
 │   └── requirements.txt
 ├── frontend/                    # Vue 3 + TailwindCSS
 ├── docker-compose.yml

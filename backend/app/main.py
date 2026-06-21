@@ -15,16 +15,28 @@ logger = get_logger("app")
 def create_app() -> FastAPI:
     """Application factory."""
     setup_logging(settings.log_level, settings.log_format)
-    logger.info("starting_application", log_level=settings.log_level)
+    logger.info(
+        "starting_application",
+        log_level=settings.log_level,
+        environment=settings.environment,
+    )
+
+    # Initialize Sentry in staging/production
+    if settings.sentry_dsn:
+        import sentry_sdk
+
+        sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment)
 
     app = FastAPI(
         title="XMR View-Only Dashboard",
         description="Fund Transparency Suite — self-hosted Monero donation tracker",
         version="0.1.0",
+        docs_url=None if settings.is_production else "/docs",
+        redoc_url=None if settings.is_production else "/redoc",
     )
 
     # CORS
-    origins = [origin.strip() for origin in settings.cors_origins.split(",")]
+    origins = settings.effective_cors_origins
     app.add_middleware(
         CORSMiddleware,
         allow_origins=origins,

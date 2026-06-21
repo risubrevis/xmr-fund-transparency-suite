@@ -2,9 +2,10 @@ import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import { resolve } from "path";
 
-// API_PROXY_TARGET is set in docker-compose.dev.yml for Docker networking.
+// API_PROXY_TARGET is set via docker-compose.yml for Docker networking.
 // Defaults to localhost for local development without Docker.
 const apiTarget = process.env.API_PROXY_TARGET || "http://localhost:8000";
+const appUrl = process.env.APP_URL || "localhost";
 
 export default defineConfig({
   plugins: [vue()],
@@ -16,6 +17,7 @@ export default defineConfig({
   server: {
     host: "0.0.0.0",
     port: 3000,
+    allowedHosts: [appUrl, "localhost"],
     proxy: {
       "/api": {
         target: apiTarget,
