@@ -91,6 +91,7 @@ async def create_fund(
 
     fund = Fund(
         label=body.label,
+        description=body.description,
         primary_address=body.primary_address,
         deposit_address=body.deposit_address,
         view_key=encrypted_view_key,
@@ -144,6 +145,7 @@ async def get_fund(
         id=fund.id,
         public_uuid=fund.public_uuid,
         label=fund.label,
+        description=fund.description,
         primary_address=fund.primary_address,
         deposit_address=fund.deposit_address,
         start_height=fund.start_height,
@@ -166,7 +168,7 @@ async def update_fund(
     db: AsyncSession = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> FundResponse:
-    """Update fund label or active status."""
+    """Update fund label, description, or active status."""
     result = await db.execute(select(Fund).where(Fund.id == fund_id))
     fund = result.scalar_one_or_none()
 
@@ -182,6 +184,8 @@ async def update_fund(
     unset_fields = body.model_fields_set
     if "target_amount_xmr" in unset_fields:
         fund.target_amount_xmr = body.target_amount_xmr
+    if "description" in unset_fields:
+        fund.description = body.description
 
     await db.commit()
     await db.refresh(fund)

@@ -15,6 +15,9 @@
         <Coins :size="16" />
         <span>{{ fundLabel }}</span>
       </div>
+      <div v-if="fundDescription" class="text-sm opacity-80 mb-2">
+        {{ fundDescription }}
+      </div>
       <div class="text-3xl font-bold mb-2">{{ totalXmr }} XMR</div>
       <div v-if="targetAmountXmr" class="mt-1 mb-2">
         <div class="text-xs opacity-80 mb-1">
@@ -76,6 +79,7 @@ const props = withDefaults(
   defineProps<{
     publicUuid: string;
     fundLabel: string;
+    fundDescription?: string | null;
     totalXmr: string;
     targetAmountXmr?: string | null;
     baseColor?: string;

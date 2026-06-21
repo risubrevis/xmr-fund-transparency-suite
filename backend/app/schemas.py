@@ -9,6 +9,11 @@ class FundCreate(BaseModel):
     """Request body for creating a new fund."""
 
     label: str = Field(..., min_length=1, max_length=255)
+    description: str | None = Field(
+        None,
+        max_length=2048,
+        description="Optional fund description displayed in the public widget.",
+    )
     primary_address: str = Field(..., min_length=95, max_length=95)
     deposit_address: str | None = Field(
         None,
@@ -75,6 +80,11 @@ class FundUpdate(BaseModel):
     """Request body for updating a fund."""
 
     label: str | None = None
+    description: str | None = Field(
+        None,
+        max_length=2048,
+        description="Optional fund description. Set to null to clear.",
+    )
     is_active: bool | None = None
     target_amount_xmr: Decimal | None = Field(
         None,
@@ -101,6 +111,7 @@ class FundResponse(BaseModel):
     id: uuid.UUID
     public_uuid: str
     label: str
+    description: str | None = None
     primary_address: str
     deposit_address: str | None = None
     start_height: int

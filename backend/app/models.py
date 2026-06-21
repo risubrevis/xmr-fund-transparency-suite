@@ -18,6 +18,7 @@ class Fund(Base):
         String(36), unique=True, index=True, default=lambda: str(uuid.uuid4())
     )
     label: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[str | None] = mapped_column(String(2048), nullable=True)
     primary_address: Mapped[str] = mapped_column(String(95), nullable=False)
     deposit_address: Mapped[str | None] = mapped_column(String(95), nullable=True)
     view_key: Mapped[str] = mapped_column(

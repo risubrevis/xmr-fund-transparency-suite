@@ -32,6 +32,28 @@
 
           <div>
             <label
+              for="description"
+              class="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Description
+              <span class="text-gray-400">optional</span>
+            </label>
+            <textarea
+              id="description"
+              v-model="createForm.description"
+              rows="3"
+              maxlength="2048"
+              placeholder="Describe the purpose of this fund..."
+              class="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm resize-y"
+            ></textarea>
+            <p class="text-xs text-gray-500 mt-1">
+              Optional description shown in the public widget to help donors
+              understand the fund's purpose.
+            </p>
+          </div>
+
+          <div>
+            <label
               for="address"
               class="block text-sm font-medium text-gray-700 mb-1"
             >
@@ -301,6 +323,44 @@
 
               <div>
                 <label
+                  for="fund-description"
+                  class="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Description
+                  <span class="text-gray-400">optional</span>
+                </label>
+                <div class="flex gap-3 items-start">
+                  <div class="flex-1">
+                    <textarea
+                      id="fund-description"
+                      v-model="newDescription"
+                      rows="3"
+                      maxlength="2048"
+                      class="w-full px-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm resize-y"
+                    ></textarea>
+                  </div>
+                  <Button
+                    variant="outline"
+                    :disabled="savingDescription"
+                    @click="updateDescription"
+                  >
+                    <div class="flex items-center space-x-1">
+                      <Loader2
+                        v-if="savingDescription"
+                        :size="14"
+                        class="animate-spin"
+                      />
+                      <Save v-else :size="14" />
+                      <span>{{
+                        savingDescription ? "Saving..." : "Update"
+                      }}</span>
+                    </div>
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <label
                   for="target-xmr"
                   class="block text-sm font-medium text-gray-700 mb-1"
                 >
@@ -403,6 +463,12 @@
                     <span class="text-gray-500">Deposit Address:</span>
                     <span class="font-mono text-gray-700 text-xs truncate">{{
                       currentFund.deposit_address
+                    }}</span>
+                  </template>
+                  <template v-if="currentFund.description">
+                    <span class="text-gray-500">Description:</span>
+                    <span class="text-gray-700 text-xs">{{
+                      currentFund.description
                     }}</span>
                   </template>
                   <span class="text-gray-500">Start Height:</span>
@@ -517,9 +583,11 @@ const maskedKey = computed(() => {
 
 // Fund management state
 const newLabel = ref(currentFund.value?.label || "");
+const newDescription = ref(currentFund.value?.description || "");
 const newTargetAmount = ref(currentFund.value?.target_amount_xmr || "");
 const showDeleteModal = ref(false);
 const savingLabel = ref(false);
+const savingDescription = ref(false);
 const savingTarget = ref(false);
 const targetError = ref("");
 const togglingActive = ref(false);
@@ -528,6 +596,7 @@ const deleting = ref(false);
 // Create fund state
 const createForm = reactive({
   label: "",
+  description: "",
   primary_address: "",
   deposit_address: "",
   view_key: "",
@@ -553,6 +622,7 @@ const formatExamples = [
 watch(currentFund, (fund) => {
   if (fund) {
     newLabel.value = fund.label;
+    newDescription.value = fund.description || "";
     newTargetAmount.value = fund.target_amount_xmr || "";
   }
 });
@@ -585,6 +655,10 @@ async function handleCreateFund() {
     if (!payload.deposit_address?.trim()) {
       delete payload.deposit_address;
     }
+    // Only send description if it has a value
+    if (!payload.description?.trim()) {
+      delete payload.description;
+    }
     await store.createFund(payload);
     router.push("/");
   } catch (err: any) {
@@ -604,6 +678,22 @@ async function updateLabel() {
     // Error handled silently
   } finally {
     savingLabel.value = false;
+  }
+}
+
+async function updateDescription() {
+  if (!currentFund.value) return;
+  savingDescription.value = true;
+  try {
+    const value = newDescription.value.trim();
+    await fundsApi.update(currentFund.value.id, {
+      description: value || null,
+    });
+    await store.fetchFund(currentFund.value.id);
+  } catch {
+    // Error handled silently
+  } finally {
+    savingDescription.value = false;
   }
 }
 

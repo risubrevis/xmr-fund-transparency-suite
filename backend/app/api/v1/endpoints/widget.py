@@ -88,7 +88,8 @@ WIDGET_JS_TEMPLATE = """
                 'color: ' + textColor + '; padding: 24px; border-radius: 12px;' +
                 'box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px;">' +
                 '<div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">' +
-                '&#128176; ' + data.label + '</div>' +
+                                '&#128176; ' + data.label + '</div>' +
+                                (data.description ? '<div style="font-size: 12px; opacity: 0.8; margin-bottom: 6px;">' + data.description + '</div>' : '') +
                 '<div style="font-size: 36px; font-weight: bold; margin-bottom: 8px;">' +
                 data.total_received_xmr + ' XMR</div>' +
                 progressHtml +
@@ -158,6 +159,7 @@ async def get_widget_json(
 
     data = {
         "label": fund.label,
+        "description": fund.description or "",
         "deposit_address": fund.deposit_address or fund.primary_address,
         "total_received_xmr": f"{total_xmr:.2f}",
         "target_amount_xmr": f"{fund.target_amount_xmr:.2f}"

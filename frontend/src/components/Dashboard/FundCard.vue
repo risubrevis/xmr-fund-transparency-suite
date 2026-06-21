@@ -8,6 +8,9 @@
         <h3 class="text-lg font-semibold text-gray-900">
           {{ fund.label }}
         </h3>
+        <p v-if="fund.description" class="text-sm text-gray-600 mt-1">
+          {{ fund.description }}
+        </p>
         <p class="text-xs text-gray-500 font-mono mt-1">
           {{ (fund.deposit_address || fund.primary_address).slice(0, 16) }}...{{
             (fund.deposit_address || fund.primary_address).slice(-12)
