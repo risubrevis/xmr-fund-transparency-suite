@@ -55,8 +55,8 @@ async def seed(count: int, fund_id: str | None = None) -> None:
         transactions = []
 
         for _ in range(count):
-            # 0.01 XMR to ~500 XMR in atomic units
-            amount_atomic = random.randint(10_000_000_000, 500_000_000_000_000)
+            # 1 piconero (smallest unit) to 100 XMR in atomic units
+            amount_atomic = random.randint(1, 7_000_000_000_000)
             amount_xmr = Decimal(amount_atomic) / PICONERO
 
             transactions.append(
