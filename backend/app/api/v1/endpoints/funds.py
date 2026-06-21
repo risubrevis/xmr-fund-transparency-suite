@@ -47,7 +47,7 @@ async def create_fund(
     api_key: str = Depends(verify_api_key),
 ) -> FundResponse:
     """Create a new fund (view-only wallet tracker)."""
-    validate_fund_input(body.primary_address, body.view_key)
+    validate_fund_input(body.primary_address, body.view_key, body.deposit_address)
 
     # Check if a fund already exists (one wallet per instance)
     existing = await db.execute(select(Fund).where(Fund.is_active.is_(True)))
@@ -92,6 +92,7 @@ async def create_fund(
     fund = Fund(
         label=body.label,
         primary_address=body.primary_address,
+        deposit_address=body.deposit_address,
         view_key=encrypted_view_key,
         start_height=body.start_height,
         target_amount_xmr=body.target_amount_xmr,
@@ -144,6 +145,7 @@ async def get_fund(
         public_uuid=fund.public_uuid,
         label=fund.label,
         primary_address=fund.primary_address,
+        deposit_address=fund.deposit_address,
         start_height=fund.start_height,
         is_active=fund.is_active,
         target_amount_xmr=fund.target_amount_xmr,

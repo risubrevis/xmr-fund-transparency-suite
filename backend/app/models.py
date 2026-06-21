@@ -19,6 +19,7 @@ class Fund(Base):
     )
     label: Mapped[str] = mapped_column(String(255), nullable=False)
     primary_address: Mapped[str] = mapped_column(String(95), nullable=False)
+    deposit_address: Mapped[str | None] = mapped_column(String(95), nullable=True)
     view_key: Mapped[str] = mapped_column(
         String(512), nullable=False
     )  # encrypted, potentially longer than 64 chars

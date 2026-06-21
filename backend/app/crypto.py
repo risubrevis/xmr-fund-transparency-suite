@@ -32,12 +32,19 @@ def validate_view_key(view_key: str) -> bool:
     return bool(re.match(r"^[0-9a-fA-F]{64}$", view_key))
 
 
-def validate_fund_input(address: str, view_key: str) -> None:
+def validate_fund_input(
+    address: str, view_key: str, deposit_address: str | None = None
+) -> None:
     """Validate fund input data, raise HTTPException on error."""
     if not validate_monero_address(address):
         raise HTTPException(
             status_code=400,
             detail="Invalid Monero address. Must be 95 characters, base58, starting with 4/8/A/B.",
+        )
+    if deposit_address is not None and not validate_monero_address(deposit_address):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid Monero deposit address. Must be 95 characters, base58, starting with 4/8/A/B.",
         )
     if not validate_view_key(view_key):
         raise HTTPException(

@@ -54,6 +54,28 @@
 
           <div>
             <label
+              for="deposit-address"
+              class="block text-sm font-medium text-gray-700 mb-1"
+            >
+              Deposit Address
+              <span class="text-gray-400">optional</span>
+            </label>
+            <input
+              id="deposit-address"
+              v-model="createForm.deposit_address"
+              type="text"
+              placeholder="Defaults to primary address"
+              maxlength="95"
+              class="w-full px-4 h-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange font-mono text-sm"
+            />
+            <p class="text-xs text-gray-500 mt-1">
+              A separate address for receiving donations. If not specified, the
+              primary address is used.
+            </p>
+          </div>
+
+          <div>
+            <label
               for="viewkey"
               class="block text-sm font-medium text-gray-700 mb-1"
             >
@@ -371,6 +393,18 @@
                   <span class="font-mono text-gray-700 text-xs truncate">{{
                     currentFund.primary_address
                   }}</span>
+                  <template
+                    v-if="
+                      currentFund.deposit_address &&
+                      currentFund.deposit_address !==
+                        currentFund.primary_address
+                    "
+                  >
+                    <span class="text-gray-500">Deposit Address:</span>
+                    <span class="font-mono text-gray-700 text-xs truncate">{{
+                      currentFund.deposit_address
+                    }}</span>
+                  </template>
                   <span class="text-gray-500">Start Height:</span>
                   <span class="text-gray-700">{{
                     currentFund.start_height
@@ -495,6 +529,7 @@ const deleting = ref(false);
 const createForm = reactive({
   label: "",
   primary_address: "",
+  deposit_address: "",
   view_key: "",
   start_height: 3280000,
   target_amount_xmr: "",
@@ -545,6 +580,10 @@ async function handleCreateFund() {
     // Only send target_amount_xmr if it has a value
     if (!payload.target_amount_xmr?.trim()) {
       delete payload.target_amount_xmr;
+    }
+    // Only send deposit_address if it has a value, otherwise backend defaults to primary_address
+    if (!payload.deposit_address?.trim()) {
+      delete payload.deposit_address;
     }
     await store.createFund(payload);
     router.push("/");

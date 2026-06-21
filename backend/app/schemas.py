@@ -10,6 +10,12 @@ class FundCreate(BaseModel):
 
     label: str = Field(..., min_length=1, max_length=255)
     primary_address: str = Field(..., min_length=95, max_length=95)
+    deposit_address: str | None = Field(
+        None,
+        min_length=95,
+        max_length=95,
+        description="Optional deposit address. Defaults to primary_address if not provided.",
+    )
     view_key: str = Field(..., min_length=64, max_length=64)
     start_height: int = Field(..., ge=0)
     target_amount_xmr: Decimal | None = Field(
@@ -49,6 +55,21 @@ class FundCreate(BaseModel):
             raise ValueError("Invalid Monero address format")
         return v
 
+    @field_validator("deposit_address")
+    @classmethod
+    def validate_deposit_address_format(cls, v: str | None) -> str | None:
+        import re
+
+        if v is not None and not re.match(r"^[48AB][1-9A-HJ-NP-Za-km-z]{94}$", v):
+            raise ValueError("Invalid Monero deposit address format")
+        return v
+
+    @model_validator(mode="after")
+    def default_deposit_address(self) -> "FundCreate":
+        if self.deposit_address is None:
+            self.deposit_address = self.primary_address
+        return self
+
 
 class FundUpdate(BaseModel):
     """Request body for updating a fund."""
@@ -81,6 +102,7 @@ class FundResponse(BaseModel):
     public_uuid: str
     label: str
     primary_address: str
+    deposit_address: str | None = None
     start_height: int
     is_active: bool
     target_amount_xmr: Decimal | None = None

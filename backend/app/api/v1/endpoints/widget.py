@@ -92,6 +92,8 @@ WIDGET_JS_TEMPLATE = """
                 '<div style="font-size: 36px; font-weight: bold; margin-bottom: 8px;">' +
                 data.total_received_xmr + ' XMR</div>' +
                 progressHtml +
+                '<div style="font-size: 12px; opacity: 0.7; word-break: break-all; margin-bottom: 4px;">' +
+                data.deposit_address + '</div>' +
                 '<div style="font-size: 12px; opacity: 0.8;">' +
                 'Updated: ' + data.last_updated + '</div></div>';
         })
@@ -156,6 +158,7 @@ async def get_widget_json(
 
     data = {
         "label": fund.label,
+        "deposit_address": fund.deposit_address or fund.primary_address,
         "total_received_xmr": f"{total_xmr:.2f}",
         "target_amount_xmr": f"{fund.target_amount_xmr:.2f}"
         if fund.target_amount_xmr is not None

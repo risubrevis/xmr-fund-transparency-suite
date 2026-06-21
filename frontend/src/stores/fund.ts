@@ -70,6 +70,7 @@ export const useFundStore = defineStore("fund", () => {
   async function createFund(data: {
     label: string;
     primary_address: string;
+    deposit_address?: string | null;
     view_key: string;
     start_height: number;
     target_amount_xmr?: string | null;

@@ -64,6 +64,7 @@ export interface Fund {
   public_uuid: string;
   label: string;
   primary_address: string;
+  deposit_address: string | null;
   start_height: number;
   is_active: boolean;
   target_amount_xmr: string | null;
@@ -100,6 +101,7 @@ export const fundsApi = {
   create: (data: {
     label: string;
     primary_address: string;
+    deposit_address?: string | null;
     view_key: string;
     start_height: number;
     target_amount_xmr?: string | null;

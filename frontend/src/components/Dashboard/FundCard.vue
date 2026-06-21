@@ -9,8 +9,8 @@
           {{ fund.label }}
         </h3>
         <p class="text-xs text-gray-500 font-mono mt-1">
-          {{ fund.primary_address.slice(0, 16) }}...{{
-            fund.primary_address.slice(-12)
+          {{ (fund.deposit_address || fund.primary_address).slice(0, 16) }}...{{
+            (fund.deposit_address || fund.primary_address).slice(-12)
           }}
         </p>
       </div>
