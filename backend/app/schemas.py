@@ -165,6 +165,7 @@ class TransactionResponse(BaseModel):
 
     id: uuid.UUID
     txid: str
+    amount_atomic: int
     amount_xmr: Decimal
     confirmations: int
     timestamp: datetime
@@ -216,3 +217,11 @@ class WidgetTextColorResponse(BaseModel):
     """Response for widget text color setting."""
 
     color: str
+
+
+class FilterMetadata(BaseModel):
+    """Metadata describing active filters for export reports."""
+
+    date_range: dict | None = None
+    tiers: list[dict] | None = None
+    sort: list[dict] | None = None

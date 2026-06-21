@@ -54,6 +54,7 @@ def create_app() -> FastAPI:
     # Routers
     from app.api.v1.endpoints import (
         events,
+        exports,
         funds,
         health,
         reports,
@@ -65,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(funds.router, prefix="/api/v1")
     app.include_router(transactions.router, prefix="/api/v1")
     app.include_router(reports.router, prefix="/api/v1")
+    app.include_router(exports.router, prefix="/api/v1")
     app.include_router(events.router, prefix="/api/v1")
     app.include_router(settings_mod.router, prefix="/api/v1")
     app.include_router(widget.router)

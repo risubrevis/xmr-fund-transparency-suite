@@ -1,9 +1,14 @@
+"""Legacy report endpoints (PDF, XML) — backward-compatible.
+
+For the new export system with filtering and multi-format support, see exports.py.
+"""
+
 import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import verify_api_key
@@ -24,7 +29,7 @@ async def get_pdf_report(
     db: AsyncSession = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> Response:
-    """Generate and download PDF report for a fund."""
+    """Generate and download PDF report for a fund (all transactions, no filters)."""
     result = await db.execute(select(Fund).where(Fund.id == fund_id))
     fund = result.scalar_one_or_none()
     if not fund:
@@ -38,31 +43,29 @@ async def get_pdf_report(
     transactions = tx_result.scalars().all()
 
     total_xmr = sum(tx.amount_xmr for tx in transactions)
-
-    date_from = (
-        min(tx.timestamp for tx in transactions) if transactions else datetime.utcnow()
-    )
-    date_to = (
-        max(tx.timestamp for tx in transactions) if transactions else datetime.utcnow()
-    )
-
+    deposit_addr = fund.deposit_address or fund.primary_address
     dt_format = get_datetime_format()
 
     pdf_data = generate_pdf_report(
         fund_label=fund.label,
+        fund_description=fund.description,
+        deposit_address=deposit_addr,
+        wallet_height=fund.last_scanned_height,
         transactions=[
             {
                 "txid": tx.txid,
+                "amount_atomic": tx.amount_atomic,
                 "amount_xmr": str(tx.amount_xmr),
                 "timestamp": tx.timestamp,
                 "confirmations": tx.confirmations,
                 "height": tx.height,
+                "unlock_time": tx.unlock_time,
             }
             for tx in transactions
         ],
         total_xmr=str(total_xmr),
-        date_from=date_from,
-        date_to=date_to,
+        target_xmr=str(fund.target_amount_xmr) if fund.target_amount_xmr else None,
+        grand_total=str(total_xmr),
         datetime_format=dt_format,
     )
 
@@ -79,7 +82,7 @@ async def get_xml_report(
     db: AsyncSession = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> Response:
-    """Generate and download XML report for a fund."""
+    """Generate and download XML report for a fund (all transactions, no filters)."""
     result = await db.execute(select(Fund).where(Fund.id == fund_id))
     fund = result.scalar_one_or_none()
     if not fund:
@@ -93,7 +96,7 @@ async def get_xml_report(
     transactions = tx_result.scalars().all()
 
     total_xmr = sum(tx.amount_xmr for tx in transactions)
-
+    deposit_addr = fund.deposit_address or fund.primary_address
     dt_format = get_datetime_format()
 
     xml_data = generate_xml_report(
@@ -101,15 +104,20 @@ async def get_xml_report(
         transactions=[
             {
                 "txid": tx.txid,
+                "amount_atomic": tx.amount_atomic,
                 "amount_xmr": str(tx.amount_xmr),
                 "timestamp": tx.timestamp,
                 "confirmations": tx.confirmations,
                 "height": tx.height,
+                "unlock_time": tx.unlock_time,
             }
             for tx in transactions
         ],
         total_xmr=str(total_xmr),
         datetime_format=dt_format,
+        fund_description=fund.description,
+        fund_id=str(fund_id),
+        deposit_address=deposit_addr,
     )
 
     return Response(

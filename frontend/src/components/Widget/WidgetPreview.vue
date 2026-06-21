@@ -40,6 +40,48 @@
             <Clock :size="12" />
             <span>Updated: just now</span>
           </div>
+          <!-- Download buttons inside widget -->
+          <div class="flex flex-wrap gap-1.5 mt-3">
+            <a
+              :href="csvUrl"
+              class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border cursor-pointer transition-opacity hover:opacity-100"
+              :style="{
+                borderColor: textColor,
+                color: textColor,
+                background: 'transparent',
+                opacity: 0.85,
+              }"
+            >
+              <FileText :size="10" />
+              CSV
+            </a>
+            <a
+              :href="xmlUrl"
+              class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border cursor-pointer transition-opacity hover:opacity-100"
+              :style="{
+                borderColor: textColor,
+                color: textColor,
+                background: 'transparent',
+                opacity: 0.85,
+              }"
+            >
+              <FileCode :size="10" />
+              XML
+            </a>
+            <a
+              :href="jsonUrl"
+              class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border cursor-pointer transition-opacity hover:opacity-100"
+              :style="{
+                borderColor: textColor,
+                color: textColor,
+                background: 'transparent',
+                opacity: 0.85,
+              }"
+            >
+              <Braces :size="10" />
+              JSON
+            </a>
+          </div>
         </div>
 
         <!-- Right: QR code + address -->
@@ -109,8 +151,9 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from "vue";
-import { Coins, Clock, Info } from "@lucide/vue";
+import { Coins, Clock, Info, FileText, FileCode, Braces } from "@lucide/vue";
 import QRCode from "qrcode";
+import { publicWidgetExportUrl } from "@/lib/api";
 
 const props = withDefaults(
   defineProps<{
@@ -138,6 +181,10 @@ const displayAddress = computed(() => {
     props.depositAddress.slice(0, 10) + "..." + props.depositAddress.slice(-10)
   );
 });
+
+const csvUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "csv"));
+const xmlUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "xml"));
+const jsonUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "json"));
 
 async function generateQr() {
   if (!props.depositAddress) {

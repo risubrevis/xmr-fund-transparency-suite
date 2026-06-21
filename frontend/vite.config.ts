@@ -26,9 +26,12 @@ export default defineConfig({
       "/widget": {
         target: apiTarget,
         changeOrigin: true,
-        // Don't proxy the SPA route /widget — only proxy /widget/{uuid}.js and /widget/{uuid}.json
+        // Proxy API requests for widget data; let the SPA handle /widget page routes
         bypass: (req) => {
-          if (!req.url?.match(/^\/widget\/[^/]+\.(js|json)$/)) {
+          if (
+            !req.url?.match(/^\/widget\/[^/]+\.(js|json)$/) &&
+            !req.url?.match(/^\/widget\/[^/]+\/export\//)
+          ) {
             return req.url;
           }
         },

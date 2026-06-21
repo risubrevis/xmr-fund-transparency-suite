@@ -1,17 +1,33 @@
 import base64
 import io
 from datetime import datetime, timezone
+from typing import List
 
 import qrcode
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
 from app.database import get_db
+from app.filters import (
+    SortRule,
+    build_date_filter,
+    build_order_by,
+    build_tier_filter,
+    describe_filters,
+    parse_sort,
+)
 from app.models import Fund, Transaction
-from app.settings import get_widget_base_color, get_widget_text_color
+from app.reports.csv_export import generate_csv_export
+from app.reports.json_export import generate_json_export
+from app.reports.xml import generate_xml_report
+from app.settings import (
+    get_datetime_format,
+    get_widget_base_color,
+    get_widget_text_color,
+)
 
 router = APIRouter()
 
@@ -119,6 +135,14 @@ function xmrCopyAddr(btn) {
                 parseInt(textColor.slice(1, 3), 16) + ',' +
                 parseInt(textColor.slice(3, 5), 16) + ',' +
                 parseInt(textColor.slice(5, 7), 16) + ',0.3)';
+            var exportBase = 'APP_ORIGIN_PLACEHOLDER/widget/UUID_PLACEHOLDER/export/';
+            var btnStyle = 'display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.85;text-decoration:none;margin-right:4px;';
+            var downloadsHtml =
+                '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px;">' +
+                '<a href="' + exportBase + 'csv" style="' + btnStyle + '">CSV</a>' +
+                '<a href="' + exportBase + 'xml" style="' + btnStyle + '">XML</a>' +
+                '<a href="' + exportBase + 'json" style="' + btnStyle + '">JSON</a>' +
+                '</div>';
             var progressHtml = '';
             if (data.target_amount_xmr) {
                 var pct = Math.min(
@@ -158,6 +182,7 @@ function xmrCopyAddr(btn) {
                 progressHtml +
                 '<div style="font-size: 12px; opacity: 0.8; margin-top: 8px;">' +
                 'Updated: ' + data.last_updated + '</div>' +
+                downloadsHtml +
                 '</div>' +
                 rightHtml +
                 '</div>';
@@ -194,6 +219,165 @@ async def get_widget_js(
             "Access-Control-Allow-Origin": "*",
         },
     )
+
+
+PUBLIC_EXPORT_FORMATS = {"xml", "csv", "json"}
+
+
+async def _get_fund_by_uuid(uuid: str, db: AsyncSession) -> Fund:
+    """Look up a fund by public_uuid, raise 404 if not found."""
+    result = await db.execute(select(Fund).where(Fund.public_uuid == uuid))
+    fund = result.scalar_one_or_none()
+    if not fund:
+        raise HTTPException(status_code=404, detail="Fund not found")
+    return fund
+
+
+@router.get("/widget/{uuid}/export/{export_format}")
+async def public_widget_export(
+    uuid: str,
+    export_format: str,
+    start_date: datetime | None = Query(None),
+    end_date: datetime | None = Query(None),
+    tiers: str | None = Query(None),
+    sort: str | None = Query(None),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    """Public export endpoint for XML, CSV, JSON — no API key required.
+
+    Lookup is by fund public_uuid so that embedded widgets can link directly.
+    """
+    if export_format not in PUBLIC_EXPORT_FORMATS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Public export only supports: {', '.join(sorted(PUBLIC_EXPORT_FORMATS))}. "
+            f"Use the authenticated endpoint for PDF and XLSX.",
+        )
+
+    if start_date and end_date and start_date > end_date:
+        raise HTTPException(
+            status_code=400, detail="start_date must be less than or equal to end_date"
+        )
+
+    fund = await _get_fund_by_uuid(uuid, db)
+
+    # Parse optional filters
+    tier_list: List[str] = []
+    if tiers:
+        from app.filters import VALID_TIER_NAMES
+
+        tier_list = [t.strip().lower() for t in tiers.split(",") if t.strip()]
+        invalid = [t for t in tier_list if t not in VALID_TIER_NAMES]
+        if invalid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid tier names: {', '.join(invalid)}",
+            )
+
+    sort_rules: List[SortRule] = parse_sort(sort)
+
+    # Fetch transactions
+    query = select(Transaction).where(Transaction.fund_id == fund.id)
+    date_filter = build_date_filter(start_date, end_date)
+    if date_filter is not None:
+        query = query.where(date_filter)
+    tier_filter = build_tier_filter(tier_list)
+    if tier_filter is not None:
+        query = query.where(tier_filter)
+    for clause in build_order_by(sort_rules):
+        query = query.order_by(clause)
+    result = await db.execute(query)
+    transactions = result.scalars().all()
+
+    total_xmr = sum(tx.amount_xmr for tx in transactions)
+
+    # Overall stats
+    stats_result = await db.execute(
+        select(
+            func.coalesce(func.sum(Transaction.amount_xmr), 0).label("total"),
+            func.count(Transaction.id).label("count"),
+        ).where(Transaction.fund_id == fund.id)
+    )
+    stats_row = stats_result.one()
+    overall_total = str(stats_row.total)
+
+    filter_meta = describe_filters(start_date, end_date, tier_list, sort_rules)
+    if not filter_meta.get("date_range"):
+        filter_meta.pop("date_range", None)
+    if not filter_meta.get("tiers"):
+        filter_meta.pop("tiers", None)
+    if not filter_meta.get("sort"):
+        filter_meta.pop("sort", None)
+
+    tx_dicts = [
+        {
+            "txid": tx.txid,
+            "amount_atomic": tx.amount_atomic,
+            "amount_xmr": str(tx.amount_xmr),
+            "confirmations": tx.confirmations,
+            "timestamp": tx.timestamp,
+            "height": tx.height,
+            "unlock_time": tx.unlock_time,
+        }
+        for tx in transactions
+    ]
+
+    dt_format = get_datetime_format()
+    deposit_addr = fund.deposit_address or fund.primary_address
+    fund_id_str = str(fund.id)
+    filter_meta_or_none = filter_meta if filter_meta else None
+
+    if export_format == "csv":
+        data = generate_csv_export(
+            transactions=tx_dicts,
+            fund_label=fund.label,
+            datetime_format=dt_format,
+        )
+        return Response(
+            content=data,
+            media_type="text/csv",
+            headers={
+                "Content-Disposition": f"attachment; filename=export_{fund_id_str}.csv",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
+
+    elif export_format == "xml":
+        data = generate_xml_report(
+            fund_label=fund.label,
+            transactions=tx_dicts,
+            total_xmr=overall_total,
+            datetime_format=dt_format,
+            fund_description=fund.description,
+            fund_id=fund_id_str,
+            deposit_address=deposit_addr,
+            filter_metadata=filter_meta_or_none,
+        )
+        return Response(
+            content=data,
+            media_type="application/xml",
+            headers={
+                "Content-Disposition": f"attachment; filename=export_{fund_id_str}.xml",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
+
+    elif export_format == "json":
+        data = generate_json_export(
+            transactions=tx_dicts,
+            fund_label=fund.label,
+            fund_id=fund_id_str,
+            datetime_format=dt_format,
+            filter_metadata=filter_meta_or_none,
+        )
+        return Response(
+            content=data,
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename=export_{fund_id_str}.json",
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
 
 
 @router.get("/widget/{uuid}.json")

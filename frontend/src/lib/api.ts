@@ -83,6 +83,7 @@ export interface Fund {
 export interface Transaction {
   id: string;
   txid: string;
+  amount_atomic: number;
   amount_xmr: string;
   confirmations: number;
   timestamp: string;
@@ -126,17 +127,101 @@ export const fundsApi = {
 
   delete: (id: string) => api.delete(`/api/v1/funds/${id}`),
 
-  transactions: (id: string, cursor?: string, limit = 20) =>
-    api.get<TransactionListResponse>(`/api/v1/funds/${id}/txs`, {
-      params: { cursor, limit },
-    }),
+  transactions: (
+    id: string,
+    cursor?: string,
+    limit = 20,
+    filters?: TransactionFilters,
+  ) => {
+    const params: Record<string, string | number> = {
+      cursor: cursor ?? "",
+      limit,
+    };
+    if (filters) {
+      if (filters.start_date) params.start_date = filters.start_date;
+      if (filters.end_date) params.end_date = filters.end_date;
+      if (filters.tiers && filters.tiers.length > 0)
+        params.tiers = filters.tiers.join(",");
+      if (filters.sort && filters.sort.length > 0)
+        params.sort = filters.sort
+          .map((s) => `${s.field}:${s.direction}`)
+          .join(",");
+    }
+    // Remove empty params
+    Object.keys(params).forEach(
+      (k) => (params[k] === "" || params[k] === undefined) && delete params[k],
+    );
+    return api.get<TransactionListResponse>(`/api/v1/funds/${id}/txs`, {
+      params,
+    });
+  },
 
   reportPdf: (id: string) =>
     api.get(`/api/v1/funds/${id}/report.pdf`, { responseType: "blob" }),
 
   reportXml: (id: string) =>
     api.get(`/api/v1/funds/${id}/report.xml`, { responseType: "blob" }),
+
+  exportFile: (
+    id: string,
+    format: ExportFormat,
+    filters?: TransactionFilters,
+  ) => {
+    const params: Record<string, string> = {};
+    if (filters) {
+      if (filters.start_date) params.start_date = filters.start_date;
+      if (filters.end_date) params.end_date = filters.end_date;
+      if (filters.tiers && filters.tiers.length > 0)
+        params.tiers = filters.tiers.join(",");
+      if (filters.sort && filters.sort.length > 0)
+        params.sort = filters.sort
+          .map((s) => `${s.field}:${s.direction}`)
+          .join(",");
+    }
+    const mediaTypes: Record<string, string> = {
+      pdf: "application/pdf",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      csv: "text/csv",
+      xml: "application/xml",
+      json: "application/json",
+    };
+    return api.get(`/api/v1/funds/${id}/export/${format}`, {
+      params,
+      responseType: "blob",
+    });
+  },
 };
+
+export type ExportFormat = "pdf" | "xlsx" | "csv" | "xml" | "json";
+
+export interface SortRule {
+  field: string;
+  direction: "asc" | "desc";
+}
+
+export interface TransactionFilters {
+  start_date?: string;
+  end_date?: string;
+  tiers?: string[];
+  sort?: SortRule[];
+}
+
+export const TIER_OPTIONS: {
+  value: string;
+  label: string;
+  description: string;
+}[] = [
+  { value: "micro", label: "Micro", description: "< 0.1 XMR" },
+  { value: "medium", label: "Medium", description: "0.1 — 1.0 XMR" },
+  { value: "large", label: "Large", description: "1.0 — 5.0 XMR" },
+  { value: "whale", label: "Whale", description: "> 5.0 XMR" },
+];
+
+export const SORTABLE_FIELDS: { value: string; label: string }[] = [
+  { value: "timestamp", label: "Date" },
+  { value: "amount_xmr", label: "Amount" },
+  { value: "confirmations", label: "Confirmations" },
+];
 
 export const settingsApi = {
   getDatetimeFormat: () => api.get("/api/v1/settings/datetime-format"),
@@ -156,6 +241,18 @@ export const settingsApi = {
   updateWidgetTextColor: (color: string) =>
     api.put<{ color: string }>("/api/v1/settings/widget-text-color", { color }),
 };
+
+/**
+ * Build the public widget export URL (no API key needed).
+ * Formats: xml, csv, json.
+ */
+export function publicWidgetExportUrl(
+  publicUuid: string,
+  format: "xml" | "csv" | "json",
+): string {
+  const base = import.meta.env.VITE_API_BASE || "";
+  return `${base}/widget/${publicUuid}/export/${format}`;
+}
 
 export const healthApi = {
   check: () => api.get("/health"),

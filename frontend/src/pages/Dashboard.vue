@@ -148,6 +148,36 @@
           />
         </div>
 
+        <!-- Filter & Sort Toolbar -->
+        <div class="mt-6">
+          <TransactionFilters
+            :start-date="filters.startDate.value"
+            :end-date="filters.endDate.value"
+            :selected-tiers="filters.selectedTiers.value"
+            :sort-rules="filters.sortRules.value"
+            :date-error="filters.dateError.value"
+            :has-active-filters="filters.hasActiveFilters.value"
+            @update:start-date="filters.startDate.value = $event"
+            @update:end-date="filters.endDate.value = $event"
+            @toggle-tier="filters.toggleTier($event)"
+            @add-sort="filters.addSortRule()"
+            @remove-sort="filters.removeSortRule($event)"
+            @update-sort-field="filters.updateSortField($event[0], $event[1])"
+            @update-sort-direction="
+              filters.updateSortDirection($event[0], $event[1])
+            "
+            @reset="resetFiltersAndReload"
+          />
+        </div>
+
+        <!-- Export Button Group -->
+        <div class="mt-4">
+          <ExportButtonGroup
+            :fund-id="currentFund.id"
+            :filters="filters.buildFilters()"
+          />
+        </div>
+
         <div class="mt-6">
           <TransactionTable
             :transactions="transactions"
@@ -157,19 +187,7 @@
           />
         </div>
 
-        <div class="mt-6 flex gap-3">
-          <Button variant="outline" @click="downloadPdf">
-            <div class="flex items-center space-x-1">
-              <FileDown :size="16" />
-              <span>Download PDF</span>
-            </div>
-          </Button>
-          <Button variant="outline" @click="downloadXml">
-            <div class="flex items-center space-x-1">
-              <FileCode :size="16" />
-              <span>Download XML</span>
-            </div>
-          </Button>
+        <div class="mt-4">
           <Button variant="outline" @click="refreshData">
             <div class="flex items-center space-x-1">
               <RefreshCw :size="16" />
@@ -196,22 +214,24 @@ import {
   AlertTriangle,
   Wallet,
   PlusCircle,
-  FileDown,
-  FileCode,
   RefreshCw,
 } from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
 import { fundsApi, type Transaction } from "@/lib/api";
+import { useTransactionFilters } from "@/composables/useTransactionFilters";
 import FundCard from "@/components/Dashboard/FundCard.vue";
 import CumulativeReceivedChart from "@/components/Dashboard/Charts/CumulativeReceivedChart.vue";
 import TargetProgressBar from "@/components/Dashboard/Charts/TargetProgressBar.vue";
 import TimeDistributionChart from "@/components/Dashboard/Charts/TimeDistributionChart.vue";
 import DonutSizeDistribution from "@/components/Dashboard/Charts/DonutSizeDistribution.vue";
 import TransactionTable from "@/components/Dashboard/TransactionTable.vue";
+import TransactionFilters from "@/components/Dashboard/TransactionFilters.vue";
+import ExportButtonGroup from "@/components/Dashboard/ExportButtonGroup.vue";
 import { Button } from "@/components/ui/button";
 
 const router = useRouter();
 const store = useFundStore();
+const filters = useTransactionFilters();
 
 const apiKeyInput = ref("");
 const showKey = ref(false);
@@ -227,6 +247,22 @@ const hasMore = ref(false);
 const loadingMore = ref(false);
 const loadingTransactions = ref(true);
 const nextCursor = ref<string | null>(null);
+
+// Watch for filter changes and reload transactions
+watch(
+  () => [
+    filters.startDate.value,
+    filters.endDate.value,
+    filters.selectedTiers.value,
+    filters.sortRules.value,
+  ],
+  () => {
+    if (currentFund.value && !loadingTransactions.value) {
+      loadTransactions();
+    }
+  },
+  { deep: true },
+);
 
 watch(
   currentFund,
@@ -252,7 +288,6 @@ async function loadTransactions() {
   if (!currentFund.value) return;
   loadingTransactions.value = true;
   try {
-    // Load all transactions for charts by paginating through all pages
     const allTransactions: Transaction[] = [];
     let cursor: string | null | undefined = undefined;
     let hasMorePages = true;
@@ -262,6 +297,7 @@ async function loadTransactions() {
         currentFund.value.id,
         cursor as string | undefined,
         100,
+        filters.buildFilters(),
       );
       allTransactions.push(...response.data.items);
       hasMorePages = response.data.has_more;
@@ -269,7 +305,6 @@ async function loadTransactions() {
     }
 
     transactions.value = allTransactions;
-    // Table pagination: first page is already loaded, mark remaining
     hasMore.value = allTransactions.length > 0;
     nextCursor.value = null;
   } catch {
@@ -286,6 +321,8 @@ async function loadMoreTransactions() {
     const response = await fundsApi.transactions(
       currentFund.value.id,
       nextCursor.value,
+      20,
+      filters.buildFilters(),
     );
     transactions.value.push(...response.data.items);
     hasMore.value = response.data.has_more;
@@ -295,6 +332,11 @@ async function loadMoreTransactions() {
   } finally {
     loadingMore.value = false;
   }
+}
+
+function resetFiltersAndReload() {
+  filters.resetFilters();
+  // The watcher will trigger loadTransactions
 }
 
 async function refreshData() {
@@ -309,36 +351,6 @@ async function retryLoad() {
   await store.loadFund();
   if (currentFund.value) {
     await loadTransactions();
-  }
-}
-
-async function downloadPdf() {
-  if (!currentFund.value) return;
-  try {
-    const response = await fundsApi.reportPdf(currentFund.value.id);
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `report_${currentFund.value.id}.pdf`;
-    link.click();
-    window.URL.revokeObjectURL(url);
-  } catch {
-    // Handle error
-  }
-}
-
-async function downloadXml() {
-  if (!currentFund.value) return;
-  try {
-    const response = await fundsApi.reportXml(currentFund.value.id);
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `report_${currentFund.value.id}.xml`;
-    link.click();
-    window.URL.revokeObjectURL(url);
-  } catch {
-    // Handle error
   }
 }
 </script>
