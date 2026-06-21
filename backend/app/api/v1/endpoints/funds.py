@@ -10,7 +10,7 @@ from app.config import settings
 from app.crypto import ViewKeyEncryption, validate_fund_input
 from app.database import get_db
 from app.logging import get_logger
-from app.models import Fund, Transaction
+from app.models import Fund, Post, Transaction
 from app.rpc_client import WalletRPCError, close_wallet, create_view_only_wallet
 from app.schemas import (
     FundCreate,
@@ -235,10 +235,11 @@ async def delete_fund(
     if not fund:
         raise HTTPException(status_code=404, detail="Fund not found")
 
-    # Delete transactions first
+    # Delete transactions and posts first
     await db.execute(
         Transaction.__table__.delete().where(Transaction.fund_id == fund_id)
     )
+    await db.execute(Post.__table__.delete().where(Post.fund_id == fund_id))
     await db.delete(fund)
     await db.commit()
 

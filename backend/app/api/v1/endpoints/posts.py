@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth import verify_api_key
 from app.database import get_db
 from app.logging import get_logger
-from app.models import Post
+from app.models import Fund, Post
 from app.schemas import PostCreate, PostResponse, PostUpdate
 
 logger = get_logger("api.posts")
@@ -15,12 +15,24 @@ logger = get_logger("api.posts")
 router = APIRouter()
 
 
+async def _get_current_fund(db: AsyncSession) -> Fund:
+    """Get the single fund for this instance (one wallet per instance)."""
+    result = await db.execute(select(Fund))
+    fund = result.scalar_one_or_none()
+    if not fund:
+        raise HTTPException(status_code=404, detail="No fund exists yet")
+    return fund
+
+
 @router.get("/posts", response_model=list[PostResponse])
 async def list_posts(
     db: AsyncSession = Depends(get_db),
 ) -> list[PostResponse]:
-    """List all posts, newest first. Public endpoint — no auth required."""
-    result = await db.execute(select(Post).order_by(Post.created_at.desc()))
+    """List all posts for the current fund, newest first. Public endpoint."""
+    fund = await _get_current_fund(db)
+    result = await db.execute(
+        select(Post).where(Post.fund_id == fund.id).order_by(Post.created_at.desc())
+    )
     posts = result.scalars().all()
     return [PostResponse.model_validate(p) for p in posts]
 
@@ -31,13 +43,14 @@ async def create_post(
     db: AsyncSession = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> PostResponse:
-    """Create a new post."""
-    post = Post(body=body.body)
+    """Create a new post linked to the current fund."""
+    fund = await _get_current_fund(db)
+    post = Post(body=body.body, fund_id=fund.id)
     db.add(post)
     await db.commit()
     await db.refresh(post)
 
-    logger.info("post_created", post_id=str(post.id))
+    logger.info("post_created", post_id=str(post.id), fund_id=str(fund.id))
     return PostResponse.model_validate(post)
 
 

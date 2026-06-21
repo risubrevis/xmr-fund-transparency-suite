@@ -45,6 +45,10 @@ class Fund(Base):
         back_populates="fund", lazy="selectin"
     )
 
+    posts: Mapped[list["Post"]] = relationship(
+        back_populates="fund", lazy="selectin", cascade="all, delete-orphan"
+    )
+
 
 class Transaction(Base):
     """An incoming Monero transaction for a fund."""
@@ -72,6 +76,9 @@ class Post(Base):
     __tablename__ = "posts"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    fund_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("funds.id", ondelete="CASCADE"), nullable=False
+    )
     body: Mapped[str] = mapped_column(String(2048), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
@@ -79,3 +86,5 @@ class Post(Base):
     updated_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), onupdate=func.now()
     )
+
+    fund: Mapped["Fund"] = relationship(back_populates="posts")

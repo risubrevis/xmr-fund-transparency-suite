@@ -235,6 +235,7 @@ class PostResponse(BaseModel):
     """Post data returned in API responses."""
 
     id: uuid.UUID
+    fund_id: uuid.UUID
     body: str
     created_at: datetime
     updated_at: datetime | None = None
