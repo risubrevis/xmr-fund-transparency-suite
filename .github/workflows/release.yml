@@ -1,0 +1,61 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from tag
+        id: version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+
+      - name: Generate source archives
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION }}"
+          git archive --format=tar.gz "--prefix=xmr-fund-transparency-suite-${VERSION}/" HEAD > "xmr-fund-transparency-suite-${VERSION}.tar.gz"
+          git archive --format=zip "--prefix=xmr-fund-transparency-suite-${VERSION}/" HEAD > "xmr-fund-transparency-suite-${VERSION}.zip"
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREVIOUS_TAG=$(git tag --sort=-version:refname | head -2 | tail -1 || echo "")
+          if [ -n "$PREVIOUS_TAG" ]; then
+            CHANGES=$(git log "${PREVIOUS_TAG}..HEAD" --pretty=format:"- %s (%h)" 2>/dev/null || echo "- Initial release")
+          else
+            CHANGES="- Initial release"
+          fi
+          {
+            echo "CHANGES<<EOF"
+            echo "$CHANGES"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "XMR Fund Transparency Suite v${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## XMR Fund Transparency Suite v${{ steps.version.outputs.VERSION }}
+
+            ### Changes
+            ${{ steps.changelog.outputs.CHANGES }}
+
+            ### Assets
+            - **Source code (tar.gz)**: `xmr-fund-transparency-suite-${{ steps.version.outputs.VERSION }}.tar.gz`
+            - **Source code (zip)**: `xmr-fund-transparency-suite-${{ steps.version.outputs.VERSION }}.zip`
+          files: |
+            xmr-fund-transparency-suite-*.tar.gz
+            xmr-fund-transparency-suite-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,4 +1,4 @@
-# XMR View-Only Dashboard — Fund Transparency Suite
+# XMR Fund Transparency Suite
 
 Self-hosted web application for organizations, streamers, CCS campaigns, and NGOs to **publicly display XMR donations** to their wallet **without revealing private spend key**. You only provide a **view key** (read-only access) and get a beautiful dashboard with charts, transaction table, PDF/XML reports, and a public widget for your website.
 

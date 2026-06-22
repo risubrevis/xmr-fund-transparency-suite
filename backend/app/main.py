@@ -28,8 +28,8 @@ def create_app() -> FastAPI:
         sentry_sdk.init(dsn=settings.sentry_dsn, environment=settings.environment)
 
     app = FastAPI(
-        title="XMR View-Only Dashboard",
-        description="Fund Transparency Suite — self-hosted Monero donation tracker",
+        title="XMR Fund Transparency Suite",
+        description="Self-hosted Monero donation transparency tracker — view-key only",
         version="0.1.0",
         docs_url=None if settings.is_production else "/docs",
         redoc_url=None if settings.is_production else "/redoc",

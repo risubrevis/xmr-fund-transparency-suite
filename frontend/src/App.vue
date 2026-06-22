@@ -5,7 +5,7 @@
         <div class="flex items-center justify-between h-16">
           <router-link to="/" class="flex items-center space-x-2">
             <Landmark class="text-white" :size="24" />
-            <span class="text-white font-bold text-lg">XMR Dashboard</span>
+            <span class="text-white font-bold text-lg">XMRFTS</span>
           </router-link>
           <div class="flex items-center space-x-4">
             <router-link
@@ -67,7 +67,7 @@
     <footer
       class="border-t border-gray-200 py-4 text-center text-sm text-gray-500"
     >
-      XMR View-Only Dashboard &mdash; Fund Transparency Suite
+      XMR Fund Transparency Suite
     </footer>
   </div>
 </template>

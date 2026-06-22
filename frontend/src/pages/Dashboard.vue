@@ -8,8 +8,9 @@
       <div class="w-full max-w-md">
         <div class="text-center mb-8">
           <Landmark class="mx-auto text-monero-orange" :size="48" />
-          <h1 class="text-3xl font-bold text-gray-900 mt-4">XMR Dashboard</h1>
-          <p class="text-gray-500 mt-2">Fund Transparency Suite</p>
+          <h1 class="text-3xl font-bold text-gray-900 mt-4">
+            XMR Fund Transparency Suite
+          </h1>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">

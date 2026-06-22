@@ -45,11 +45,16 @@ jobs:
         env:
           DATABASE_URL: postgresql+asyncpg://test:test@localhost/test_xmr
           API_KEY: test-api-key-for-ci
-          VIEW_KEY_MASTER_SECRET: test-encryption-secret-for-ci
+          VIEW_KEY_MASTER_SECRET: test-encryption-secret-for-ci-at-least-32-bytes-long
 
   build:
     runs-on: ubuntu-latest
     needs: [lint, test]
     steps:
       - uses: actions/checkout@v4
-      - run: docker compose build
+      - name: Build Docker images
+        run: docker compose build
+        env:
+          DB_PASSWORD: ci-build-password
+          API_KEY: ci-build-api-key
+          VIEW_KEY_MASTER_SECRET: ci-build-master-secret-at-least-32-bytes-long
