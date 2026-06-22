@@ -115,6 +115,107 @@
           </button>
         </div>
       </div>
+
+      <!-- News section (inside the widget card) — only shown if fund has posts -->
+      <div
+        v-if="hasPosts"
+        style="
+          margin-top: 0;
+          border-top: 1px solid rgba(255, 255, 255, 0.2);
+          padding-top: 12px;
+          padding-left: 24px;
+          padding-right: 24px;
+          padding-bottom: 24px;
+        "
+      >
+        <div
+          class="flex justify-between items-center cursor-pointer select-none"
+          @click="toggleNews"
+        >
+          <span
+            style="font-size: 13px; font-weight: 600; letter-spacing: 0.3px"
+            class="flex items-center gap-1"
+          >
+            <Newspaper :size="13" />
+            News
+            <span
+              v-if="freshPostsCount > 0"
+              style="
+                display: inline-block;
+                font-size: 10px;
+                font-weight: 600;
+                background: #ff6600;
+                color: #fff;
+                border-radius: 8px;
+                padding: 1px 6px;
+                margin-left: 4px;
+                vertical-align: middle;
+              "
+              >+{{ freshPostsCount }}</span
+            ></span
+          >
+          <span style="font-size: 11px; opacity: 0.7">{{
+            newsExpanded ? "▲" : "▼"
+          }}</span>
+        </div>
+        <div v-if="newsExpanded" style="margin-top: 10px">
+          <div v-if="newsLoading" class="text-center py-2 opacity-70 text-xs">
+            Loading...
+          </div>
+          <div
+            v-else-if="newsError"
+            class="text-center py-2 opacity-70 text-xs"
+          >
+            Failed to load news
+          </div>
+          <div
+            v-else-if="posts.length === 0"
+            class="text-center py-2 opacity-60 text-xs"
+          >
+            No news yet
+          </div>
+          <div v-else>
+            <div
+              v-for="post in posts"
+              :key="post.id"
+              style="
+                background: rgba(255, 255, 255, 0.12);
+                border-radius: 8px;
+                padding: 10px 12px;
+                margin-bottom: 8px;
+              "
+            >
+              <div style="font-size: 10px; opacity: 0.6; margin-bottom: 4px">
+                {{ post.created_at }}
+              </div>
+              <div
+                style="
+                  font-size: 12px;
+                  line-height: 1.5;
+                  white-space: pre-wrap;
+                  word-break: break-word;
+                "
+              >
+                {{ post.body }}
+              </div>
+            </div>
+            <button
+              v-if="hasMorePosts"
+              :disabled="loadingMore"
+              class="text-[11px] px-3.5 py-1 rounded-md border cursor-pointer transition-opacity"
+              :style="{
+                borderColor: textColor,
+                color: textColor,
+                background: 'transparent',
+                opacity: loadingMore ? 0.5 : 0.85,
+              }"
+              @click="loadMorePosts"
+            >
+              {{ loadingMore ? "Loading..." : "Load more" }}
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Embed Code -->
@@ -151,9 +252,24 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, watch } from "vue";
-import { Coins, Clock, Info, FileText, FileCode, Braces } from "@lucide/vue";
+import {
+  Coins,
+  Clock,
+  Info,
+  FileText,
+  FileCode,
+  Braces,
+  Newspaper,
+} from "@lucide/vue";
 import QRCode from "qrcode";
 import { publicWidgetExportUrl } from "@/lib/api";
+
+interface WidgetPost {
+  id: string;
+  body: string;
+  created_at: string;
+  updated_at: string | null;
+}
 
 const props = withDefaults(
   defineProps<{
@@ -175,6 +291,18 @@ const props = withDefaults(
 const qrDataUrl = ref("");
 const copyLabel = ref("Copy Address");
 
+// News section state
+const newsExpanded = ref(false);
+const newsLoading = ref(false);
+const newsError = ref(false);
+const posts = ref<WidgetPost[]>([]);
+const hasMorePosts = ref(false);
+const loadingMore = ref(false);
+const hasPosts = ref(false);
+const freshPostsCount = ref(0);
+let newsLoaded = false;
+let postsOffset = 0;
+
 const displayAddress = computed(() => {
   if (!props.depositAddress) return "";
   return (
@@ -185,6 +313,99 @@ const displayAddress = computed(() => {
 const csvUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "csv"));
 const xmlUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "xml"));
 const jsonUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "json"));
+
+function getPostsBaseUrl(): string {
+  const base = import.meta.env.VITE_API_BASE || "";
+  return `${base}/widget/${props.publicUuid}`;
+}
+
+async function toggleNews() {
+  newsExpanded.value = !newsExpanded.value;
+  if (newsExpanded.value) {
+    // Reset state and re-fetch fresh posts on every expand
+    posts.value = [];
+    hasMorePosts.value = false;
+    postsOffset = 0;
+    newsLoaded = false;
+    await fetchPosts();
+  } else {
+    // Clear loaded posts on collapse so next expand fetches fresh
+    posts.value = [];
+    hasMorePosts.value = false;
+    postsOffset = 0;
+    newsLoaded = false;
+  }
+}
+
+async function checkHasPosts() {
+  try {
+    const base = getPostsBaseUrl();
+    const res = await fetch(`${base}/posts.json?limit=1&offset=0`);
+    if (!res.ok) return;
+    const data = await res.json();
+    hasPosts.value = data.total > 0;
+    // Count fresh posts (created within last 24h) from the already-fetched data
+    const now = new Date();
+    const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    freshPostsCount.value = data.posts.filter((p: WidgetPost) => {
+      return new Date(p.created_at) >= dayAgo;
+    }).length;
+    // If the first page didn't include all fresh posts, fetch total fresh count from widget JSON
+    if (data.total > 0) {
+      try {
+        const widgetBase = import.meta.env.VITE_API_BASE || "";
+        const widgetRes = await fetch(
+          `${widgetBase}/widget/${props.publicUuid}.json`,
+        );
+        if (widgetRes.ok) {
+          const widgetData = await widgetRes.json();
+          freshPostsCount.value = widgetData.fresh_posts_count || 0;
+        }
+      } catch {
+        // Use the count from the first page as fallback
+      }
+    }
+  } catch {
+    // Silently fail — news section simply won't appear
+  }
+}
+
+async function fetchPosts() {
+  newsLoading.value = true;
+  newsError.value = false;
+  try {
+    const base = getPostsBaseUrl();
+    const res = await fetch(`${base}/posts.json?limit=5&offset=0`);
+    if (!res.ok) throw new Error("Failed to fetch posts");
+    const data = await res.json();
+    posts.value = data.posts;
+    hasMorePosts.value = data.has_more;
+    postsOffset = data.posts.length;
+    newsLoaded = true;
+  } catch {
+    newsError.value = true;
+  } finally {
+    newsLoading.value = false;
+  }
+}
+
+async function loadMorePosts() {
+  loadingMore.value = true;
+  try {
+    const base = getPostsBaseUrl();
+    const res = await fetch(`${base}/posts.json?limit=5&offset=${postsOffset}`);
+    if (!res.ok) throw new Error("Failed to fetch posts");
+    const data = await res.json();
+    posts.value = [...posts.value, ...data.posts];
+    hasMorePosts.value = data.has_more;
+    postsOffset += data.posts.length;
+  } catch {
+    // Keep existing posts, just disable further loading
+    hasMorePosts.value = false;
+  } finally {
+    loadingMore.value = false;
+  }
+}
 
 async function generateQr() {
   if (!props.depositAddress) {
@@ -207,7 +428,10 @@ async function generateQr() {
   }
 }
 
-onMounted(generateQr);
+onMounted(() => {
+  generateQr();
+  checkHasPosts();
+});
 watch(() => props.depositAddress, generateQr);
 
 async function copyAddress() {

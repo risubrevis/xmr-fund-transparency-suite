@@ -1,6 +1,6 @@
 import base64
 import io
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 import qrcode
@@ -19,7 +19,7 @@ from app.filters import (
     describe_filters,
     parse_sort,
 )
-from app.models import Fund, Transaction
+from app.models import Fund, Post, Transaction
 from app.reports.csv_export import generate_csv_export
 from app.reports.json_export import generate_json_export
 from app.reports.xml import generate_xml_report
@@ -79,6 +79,93 @@ function xmrCopyAddr(btn) {
     } catch(e) {
         fallback();
     }
+}
+
+var xmrNewsOffset = 0;
+var xmrNewsHasPosts = false;
+var xmrNewsUuid = '';
+
+function xmrEscapeHtml(text) {
+    var d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+}
+
+function xmrToggleNews() {
+    var content = document.getElementById('xmr-news-content');
+    var arrow = document.getElementById('xmr-news-arrow');
+    if (!content || !arrow) return;
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.textContent = '\u25b2';
+        // Reset and re-fetch on every expand
+        xmrNewsOffset = 0;
+        xmrFetchNews();
+    } else {
+        content.style.display = 'none';
+        arrow.textContent = '\u25bc';
+        // Reset state on collapse
+        var postsContainer = document.getElementById('xmr-news-posts');
+        if (postsContainer) postsContainer.innerHTML = '';
+        var moreBtn = document.getElementById('xmr-news-more');
+        if (moreBtn) moreBtn.style.display = 'none';
+    }
+}
+
+function xmrFetchNews() {
+    var container = document.getElementById('xmr-news-posts');
+    if (xmrNewsOffset === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:8px;opacity:0.7;">Loading...</div>';
+    }
+    var btn = document.getElementById('xmr-news-more');
+    fetch('APP_ORIGIN_PLACEHOLDER/widget/' + xmrNewsUuid + '/posts.json?limit=5&offset=' + xmrNewsOffset)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (xmrNewsOffset === 0) {
+                container.innerHTML = '';
+            }
+            if (data.posts.length === 0 && xmrNewsOffset === 0) {
+                var empty = document.createElement('div');
+                empty.style.cssText = 'text-align:center;padding:8px;opacity:0.6;font-size:12px;';
+                empty.textContent = 'No news yet';
+                container.appendChild(empty);
+            }
+            data.posts.forEach(function(post) {
+                var card = document.createElement('div');
+                card.style.cssText = 'background:rgba(255,255,255,0.12);border-radius:8px;padding:10px 12px;margin-bottom:8px;';
+                var dateEl = document.createElement('div');
+                dateEl.style.cssText = 'font-size:10px;opacity:0.6;margin-bottom:4px;';
+                dateEl.textContent = post.created_at;
+                var bodyEl = document.createElement('div');
+                bodyEl.style.cssText = 'font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-word;';
+                bodyEl.textContent = post.body;
+                card.appendChild(dateEl);
+                card.appendChild(bodyEl);
+                container.appendChild(card);
+            });
+            xmrNewsOffset += data.posts.length;
+            if (data.has_more) {
+                btn.style.display = 'inline-flex';
+                btn.textContent = 'Load more';
+                btn.disabled = false;
+            } else {
+                btn.style.display = 'none';
+            }
+        })
+        .catch(function() {
+            if (xmrNewsOffset === 0) {
+                container.innerHTML = '<div style="text-align:center;padding:8px;opacity:0.7;">Failed to load news</div>';
+            }
+            btn.textContent = 'Load more';
+            btn.disabled = false;
+        });
+}
+
+function xmrLoadMoreNews() {
+    var btn = document.getElementById('xmr-news-more');
+    btn.textContent = 'Loading...';
+    btn.disabled = true;
+    xmrFetchNews();
 }
 
 (function() {
@@ -167,12 +254,35 @@ function xmrCopyAddr(btn) {
                 '<button data-addr="' + data.deposit_address + '" onclick="xmrCopyAddr(this)" ' +
                 'style="margin-top:6px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.9;">Copy Address</button>' +
                 '</div>';
+
+            var newsIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M18 8h-8"/><path d="M15 12h-2"/></svg>';
+
+            var newsSectionHtml = '';
+            if (data.post_count > 0) {
+                var newsLabel = newsIconSvg + ' News';
+                if (data.fresh_posts_count > 0) {
+                    newsLabel += ' <span style="display:inline-block;font-size:10px;font-weight:600;background:#FF6600;color:#fff;border-radius:8px;padding:1px 6px;margin-left:4px;vertical-align:middle;">+' + data.fresh_posts_count + '</span>';
+                }
+                newsSectionHtml =
+                    '<div id="xmr-news-section" style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;">' +
+                    '<div onclick="xmrToggleNews()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;">' +
+                    '<span style="font-size:13px;font-weight:600;letter-spacing:0.3px;">' + newsLabel + '</span>' +
+                    '<span id="xmr-news-arrow" style="font-size:11px;opacity:0.7;">' + '\u25bc' + '</span>' +
+                    '</div>' +
+                    '<div id="xmr-news-content" style="display:none;margin-top:10px;">' +
+                    '<div id="xmr-news-posts"></div>' +
+                    '<button id="xmr-news-more" onclick="xmrLoadMoreNews()" style="display:none;margin-top:8px;font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.85;">Load more</button>' +
+                    '</div>' +
+                    '</div>';
+            }
+
             container.innerHTML = '<div style="' +
                 'font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;' +
                 'background: linear-gradient(135deg, ' + baseColor + ' 0%, ' + endColor + ' 100%);' +
                 'color: ' + textColor + '; padding: 24px; border-radius: 12px;' +
                 'box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px;' +
-                'display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">' +
+                '">' +
+                '<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">' +
                 '<div style="flex:1;min-width:200px;">' +
                 '<div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">' +
                 '&#128176; ' + data.label + '</div>' +
@@ -185,7 +295,14 @@ function xmrCopyAddr(btn) {
                 downloadsHtml +
                 '</div>' +
                 rightHtml +
+                '</div>' +
+                newsSectionHtml +
                 '</div>';
+
+            xmrNewsUuid = 'UUID_PLACEHOLDER';
+            if (data.post_count > 0) {
+                xmrNewsHasPosts = true;
+            }
         })
         .catch(function(err) {
             container.innerHTML = '<div style="color: red;">Failed to load widget</div>';
@@ -231,6 +348,55 @@ async def _get_fund_by_uuid(uuid: str, db: AsyncSession) -> Fund:
     if not fund:
         raise HTTPException(status_code=404, detail="Fund not found")
     return fund
+
+
+@router.get("/widget/{uuid}/posts.json")
+async def get_widget_posts(
+    uuid: str,
+    limit: int = Query(5, ge=1, le=20),
+    offset: int = Query(0, ge=0),
+    db: AsyncSession = Depends(get_db),
+) -> JSONResponse:
+    """Public endpoint — paginated posts for the widget."""
+    fund = await _get_fund_by_uuid(uuid, db)
+
+    count_result = await db.execute(
+        select(func.count(Post.id)).where(Post.fund_id == fund.id)
+    )
+    total = count_result.scalar()
+
+    result = await db.execute(
+        select(Post)
+        .where(Post.fund_id == fund.id)
+        .order_by(Post.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    posts = result.scalars().all()
+
+    return JSONResponse(
+        content={
+            "posts": [
+                {
+                    "id": str(p.id),
+                    "body": p.body,
+                    "created_at": p.created_at.strftime("%Y-%m-%d %H:%M UTC"),
+                    "updated_at": (
+                        p.updated_at.strftime("%Y-%m-%d %H:%M UTC")
+                        if p.updated_at
+                        else None
+                    ),
+                }
+                for p in posts
+            ],
+            "total": total,
+            "has_more": (offset + len(posts)) < total,
+        },
+        headers={
+            "Cache-Control": "public, max-age=60",
+            "Access-Control-Allow-Origin": "*",
+        },
+    )
 
 
 @router.get("/widget/{uuid}/export/{export_format}")
@@ -405,6 +571,19 @@ async def get_widget_json(
     )
     tx_count = tx_count_result.scalar()
 
+    post_count_result = await db.execute(
+        select(func.count(Post.id)).where(Post.fund_id == fund.id)
+    )
+    post_count = post_count_result.scalar()
+
+    time_threshold = datetime.now(timezone.utc) - timedelta(hours=24)
+    fresh_posts_result = await db.execute(
+        select(func.count(Post.id)).where(
+            Post.fund_id == fund.id, Post.created_at >= time_threshold
+        )
+    )
+    fresh_posts_count = fresh_posts_result.scalar()
+
     deposit_addr = fund.deposit_address or fund.primary_address
 
     # Monero URI scheme: monero:<address> — recognized by wallet apps
@@ -420,6 +599,8 @@ async def get_widget_json(
         if fund.target_amount_xmr is not None
         else None,
         "transaction_count": tx_count,
+        "post_count": post_count,
+        "fresh_posts_count": fresh_posts_count,
         "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "base_color": get_widget_base_color(),
         "text_color": get_widget_text_color(),

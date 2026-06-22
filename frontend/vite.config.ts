@@ -30,7 +30,8 @@ export default defineConfig({
         bypass: (req) => {
           if (
             !req.url?.match(/^\/widget\/[^/]+\.(js|json)$/) &&
-            !req.url?.match(/^\/widget\/[^/]+\/export\//)
+            !req.url?.match(/^\/widget\/[^/]+\/export\//) &&
+            !req.url?.match(/^\/widget\/[^/]+\/posts\.json/)
           ) {
             return req.url;
           }
