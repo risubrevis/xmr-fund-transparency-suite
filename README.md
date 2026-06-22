@@ -96,7 +96,7 @@ Drop a single `<script>` tag into any website to display live donation progress,
 
 The admin dashboard provides real-time analytics, transaction filtering, multi-format exports, and full control over fund settings and widget appearance.
 
-![Admin Dashboard](assets/Dashboard.png)
+![Admin Dashboard](assets/Dashboard_Preview.png)
 
 ### All Screenshots
 
