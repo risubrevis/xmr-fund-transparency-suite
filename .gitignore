@@ -1,5 +1,6 @@
 .env
 settings.json
+.deploy-version
 
 # Persistent data directories (bind mounts)
 data/
@@ -20,3 +21,6 @@ htmlcov/
 node_modules/
 .vite/
 .zed/
+
+# Database backups
+backups/

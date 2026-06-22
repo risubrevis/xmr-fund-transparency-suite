@@ -156,6 +156,21 @@ All configuration via environment variables in `.env`:
 | `SCAN_INTERVAL` | Seconds between scans | `60` |
 | `LOG_LEVEL` | Logging level | `INFO` |
 
+## Updating
+
+```bash
+./scripts/update.sh              # Update to latest release
+./scripts/update.sh v0.2.0       # Update to specific version
+./scripts/update.sh --check      # Check for available updates
+./scripts/update.sh --rollback    # Roll back to previous version
+```
+
+The update script automatically:
+- Creates a database backup before switching versions
+- Fetches the latest release tags from GitHub
+- Checks out the target version and rebuilds containers
+- Waits for the backend health check (migrations run automatically)
+
 ## License
 
 MIT
