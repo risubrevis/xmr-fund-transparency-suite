@@ -324,8 +324,12 @@ async def get_widget_js(
     if not fund:
         raise HTTPException(status_code=404, detail="Fund not found")
 
+    # Detect origin from the request so the widget works on any domain
+    # (dashboard, public site, or third-party embed)
+    origin = str(request.base_url).rstrip("/")
+
     widget_js = WIDGET_JS_TEMPLATE.replace("UUID_PLACEHOLDER", uuid).replace(
-        "APP_ORIGIN_PLACEHOLDER", settings.app_origin
+        "APP_ORIGIN_PLACEHOLDER", origin
     )
 
     return Response(

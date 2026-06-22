@@ -225,10 +225,10 @@
         <div
           class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto"
         >
+          &lt;div id="xmr-fund-widget"&gt;&lt;/div&gt;<br />
           &lt;script src="{{ baseUrl }}/widget/{{
             publicUuid
-          }}.js"&gt;&lt;/script&gt;<br />
-          &lt;div id="xmr-fund-widget"&gt;&lt;/div&gt;
+          }}.js"&gt;&lt;/script&gt;
         </div>
       </div>
       <div>
