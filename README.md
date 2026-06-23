@@ -375,6 +375,29 @@ All configuration is injected via the `.env` file:
 
 ---
 
+## ☕ Support & Donations
+
+If **XMR Fund Transparency Suite** helped you build trust with your community or made your CCS campaign a little more transparent, consider sending some crypto-dust to support the developer. Every satoshi, gwei, and piconero keeps the code clean and the commits smooth!
+
+| Coin | Network | Address |
+|------|---------|---------|
+| **Monero** | XMR | `89tK9E9LbwdCsnnZGFMJzU7yBRGaQ7hfPTeNXWCe2LW3G7kCkJWswhb2ieBkHFrBs2JfdsmumQ3nY9obQ6fxb4HzHpTjCjd` |
+| **Bitcoin** | BTC | `bc1qh0t2u7d7u0pl2yzmxuq80verhlfxuj0r29lfv7` |
+| **USDT** | Polygon | `0xe1aAE089F1b0A3b2649017A7E7afa720877409C8` |
+| **USDC** | Polygon | `0xe1aAE089F1b0A3b2649017A7E7afa720877409C8` |
+| **USDT** | TRON | `TMkxXPuxamSci19rSygy58QRjZ9vmLjqtu` |
+| **Ethereum** | Arbitrum | `0xe1aAE089F1b0A3b2649017A7E7afa720877409C8` |
+
+---
+
+<div align="center">
+
+**[Report Bug](https://github.com/risubrevis/xmr-fund-transparency-suite/issues) · [Request Feature](https://github.com/risubrevis/xmr-fund-transparency-suite/issues) · [Releases](https://github.com/risubrevis/xmr-fund-transparency-suite/releases)**
+
+</div>
+
+---
+
 ## License
 
 MIT
