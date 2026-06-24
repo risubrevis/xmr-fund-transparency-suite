@@ -255,18 +255,18 @@ function xmrLoadMoreNews() {
                 'style="margin-top:6px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.9;">Copy Address</button>' +
                 '</div>';
 
-            var newsIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px;"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M18 8h-8"/><path d="M15 12h-2"/></svg>';
+            var newsIconSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2Zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8"/><path d="M15 18h-5"/><path d="M18 8h-8"/><path d="M15 12h-2"/></svg>';
 
             var newsSectionHtml = '';
             if (data.post_count > 0) {
-                var newsLabel = newsIconSvg + ' News';
+                var newsLabel = newsIconSvg + '<span style="white-space:nowrap;">News</span>';
                 if (data.fresh_posts_count > 0) {
-                    newsLabel += ' <span style="display:inline-block;font-size:10px;font-weight:600;background:#FF6600;color:#fff;border-radius:8px;padding:1px 6px;margin-left:4px;vertical-align:middle;">+' + data.fresh_posts_count + '</span>';
+                    newsLabel += '<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:600;background:#FF6600;color:#fff;border-radius:8px;padding:1px 6px;flex-shrink:0;">+' + data.fresh_posts_count + '</span>';
                 }
                 newsSectionHtml =
                     '<div id="xmr-news-section" style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;">' +
                     '<div onclick="xmrToggleNews()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;">' +
-                    '<span style="font-size:13px;font-weight:600;letter-spacing:0.3px;">' + newsLabel + '</span>' +
+                    '<span style="font-size:13px;font-weight:600;letter-spacing:0.3px;display:inline-flex;align-items:center;flex-wrap:nowrap;gap:4px;">' + newsLabel + '</span>' +
                     '<span id="xmr-news-arrow" style="font-size:11px;opacity:0.7;">' + '\u25bc' + '</span>' +
                     '</div>' +
                     '<div id="xmr-news-content" style="display:none;margin-top:10px;">' +
@@ -280,7 +280,7 @@ function xmrLoadMoreNews() {
                 'font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, sans-serif;' +
                 'background: linear-gradient(135deg, ' + baseColor + ' 0%, ' + endColor + ' 100%);' +
                 'color: ' + textColor + '; padding: 24px; border-radius: 12px;' +
-                'box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 600px;' +
+                'box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%;' +
                 '">' +
                 '<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">' +
                 '<div style="flex:1;min-width:200px;">' +
@@ -324,9 +324,9 @@ async def get_widget_js(
     if not fund:
         raise HTTPException(status_code=404, detail="Fund not found")
 
-    # Detect origin from the request so the widget works on any domain
-    # (dashboard, public site, or third-party embed)
-    origin = str(request.base_url).rstrip("/")
+    # Use configured app origin so widget URLs are always correct
+    # (not request.base_url which reflects internal Docker network)
+    origin = settings.app_origin
 
     widget_js = WIDGET_JS_TEMPLATE.replace("UUID_PLACEHOLDER", uuid).replace(
         "APP_ORIGIN_PLACEHOLDER", origin
@@ -337,7 +337,6 @@ async def get_widget_js(
         media_type="application/javascript",
         headers={
             "Cache-Control": "public, max-age=3600",
-            "Access-Control-Allow-Origin": "*",
         },
     )
 
@@ -398,7 +397,6 @@ async def get_widget_posts(
         },
         headers={
             "Cache-Control": "public, max-age=60",
-            "Access-Control-Allow-Origin": "*",
         },
     )
 
@@ -508,7 +506,6 @@ async def public_widget_export(
             media_type="text/csv",
             headers={
                 "Content-Disposition": f"attachment; filename=export_{fund_id_str}.csv",
-                "Access-Control-Allow-Origin": "*",
             },
         )
 
@@ -528,7 +525,6 @@ async def public_widget_export(
             media_type="application/xml",
             headers={
                 "Content-Disposition": f"attachment; filename=export_{fund_id_str}.xml",
-                "Access-Control-Allow-Origin": "*",
             },
         )
 
@@ -545,7 +541,6 @@ async def public_widget_export(
             media_type="application/json",
             headers={
                 "Content-Disposition": f"attachment; filename=export_{fund_id_str}.json",
-                "Access-Control-Allow-Origin": "*",
             },
         )
 
@@ -614,6 +609,5 @@ async def get_widget_json(
         content=data,
         headers={
             "Cache-Control": "public, max-age=60",
-            "Access-Control-Allow-Origin": "*",
         },
     )
