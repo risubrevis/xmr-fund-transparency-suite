@@ -13,6 +13,14 @@
 
 ---
 
+## 🌐 Live Production Website
+
+The official landing page and live tracking demonstration of this project is running at **[xmrfts.com](https://xmrfts.com)**.
+
+You can visit the live platform to inspect the open-source analytics integration, view deployment use-cases, and test the embeddable public donation widget running on top of a live Monero node.
+
+---
+
 ## ⚡ The Challenge: Crowdfunding in Pure Privacy
 
 Monero is the gold standard for financial privacy. But if you are a developer, streamer, NGO, or the author of a CCS proposal, this absolute privacy becomes your biggest bottleneck:
