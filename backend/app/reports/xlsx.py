@@ -1,7 +1,6 @@
 """Generate XLSX (Excel) export for transaction data."""
 
 from datetime import datetime
-from decimal import Decimal
 from io import BytesIO
 from typing import List
 

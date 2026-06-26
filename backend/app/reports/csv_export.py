@@ -2,7 +2,6 @@
 
 import csv
 import io
-from datetime import datetime
 from typing import List
 
 from app.validators import format_datetime

@@ -6,7 +6,6 @@ clauses as the paginated transaction list, but without pagination limits.
 
 import uuid
 from datetime import datetime
-from decimal import Decimal
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query

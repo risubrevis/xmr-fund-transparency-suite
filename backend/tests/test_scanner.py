@@ -1,7 +1,6 @@
 """Tests for the scanner module."""
 
 import uuid
-from datetime import datetime, timezone
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -27,8 +26,6 @@ class TestMoneroScanner:
     @pytest.mark.asyncio
     async def test_rpc_call_retry(self):
         """Verify scanner module-level constants are defined."""
-        scanner = MoneroScanner(rpc_url="http://localhost:18082")
-
         # Module-level constants, not instance attributes
         assert MAX_RETRIES == 3
 

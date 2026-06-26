@@ -2,13 +2,11 @@ import asyncio
 import json
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import verify_api_key
-from app.database import get_db
 from app.models import Fund
 
 router = APIRouter()

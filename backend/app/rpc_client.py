@@ -1,6 +1,5 @@
 """Monero Wallet RPC client for creating/opening view-only wallets."""
 
-import logging
 from typing import Optional
 
 import httpx

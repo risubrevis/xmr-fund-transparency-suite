@@ -2,7 +2,6 @@
 
 import io
 from datetime import datetime
-from decimal import Decimal
 from typing import List
 
 from jinja2 import Template

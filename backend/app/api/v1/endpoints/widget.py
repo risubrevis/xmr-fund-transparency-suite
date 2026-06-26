@@ -457,8 +457,6 @@ async def public_widget_export(
     result = await db.execute(query)
     transactions = result.scalars().all()
 
-    total_xmr = sum(tx.amount_xmr for tx in transactions)
-
     # Overall stats
     stats_result = await db.execute(
         select(

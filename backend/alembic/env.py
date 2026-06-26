@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from alembic import context
 from app.database import Base
-from app.models import Fund, Post, Transaction
+import app.models  # noqa: F401 — ensure models are registered with Base.metadata
 from sqlalchemy import engine_from_config, pool
 
 config = context.config
