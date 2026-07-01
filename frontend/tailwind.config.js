@@ -44,6 +44,23 @@ export default {
           foreground: "var(--card-foreground)",
         },
       },
+      fontFamily: {
+        sans: [
+          '"Inter"',
+          "-apple-system",
+          "BlinkMacSystemFont",
+          '"Segoe UI"',
+          "Roboto",
+          "sans-serif",
+        ],
+        mono: [
+          '"JetBrains Mono"',
+          "ui-monospace",
+          '"Cascadia Code"',
+          '"Fira Code"',
+          "monospace",
+        ],
+      },
       borderRadius: {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
