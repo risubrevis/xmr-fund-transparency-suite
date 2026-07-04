@@ -42,11 +42,11 @@ Your coins remain 100% secure in cold storage, while your donors get a beautiful
 
 * **Eliminate "Donation Hesitation":** When donors see a beautiful, real-time cumulative chart moving toward a milestone, the "FOMO effect" kicks in. They want to be the ones who push the progress bar to 100%.
 * **Zero-Maintenance Transparency:** Drop our sleek, responsive widget into your existing website or blog. Once it's there, you never have to manually report a donation again. The suite automatically detects blocks, updates progress, and keeps your community in the loop.
-* **Keep Personal Funds Personal:** Built-in **Sub-address Isolation** means you can generate a specific sub-address (starting with `8...`) for a target campaign (e.g., "Buy me a coffee"). XMR FTS will strictly track that sub-address, completely ignoring your main wallet balance and personal transactions.
+* **Keep Personal Funds Personal:** Built-in **Sub-Address Isolation** means you can generate a specific sub-address (starting with `8...`) for a target campaign (e.g., "Buy me a coffee"). XMR FTS will strictly track that sub-address, completely ignoring your main wallet balance and personal transactions.
 * **Professional Audit-Ready Reports:** Generate executive cryptographic summaries or download structured financial sheets (PDF, XLSX, CSV, XML, JSON) with a single click to back up your milestone claims on Reddit, Gitlab, or the Monero CCS platform.
 * **Engage Donors Instantly:** Use the built-in microblog to publish code updates or status reports directly inside the public widget. When people come to donate, they don't just see a cold QR code — they see active development and a live 24-hour fresh news counter.
 
-> **Architectural Philosophy (One Instance = One Wallet):** XMR FTS is built as a self-hosted, sovereign infrastructure. One instance securely locks onto one specific view-only wallet managed by `monero-wallet-rpc`. No multi-wallet clutter, no RPC race conditions, zero attack surface. Pure, dedicated transparency for your cause.
+> **Multi-Wallet, Multi-Fund Architecture:** A single XMR FTS instance can manage **multiple view-only wallets**, each containing **multiple funds** with their own deposit sub-addresses. Switch between wallets and funds in the dashboard, give each fund its own branded widget, and let the background scanner handle them all.
 
 ---
 
@@ -56,11 +56,19 @@ Your coins remain 100% secure in cold storage, while your donors get a beautiful
 
 Your private view key is **never stored in plaintext**. It is encrypted at rest using **AES-256 via Fernet** (`cryptography` library) with a master secret from the `VIEW_KEY_MASTER_SECRET` environment variable. The scanner decrypts it in-memory only during RPC calls, and the key is **never logged**.
 
+### 💼 Multi-Wallet Support
+
+Connect **multiple Monero view-only wallets** to a single XMR FTS instance. Each wallet is independently managed — create, pause, or remove wallets at any time. The background scanner cycles through all active wallets, and the dashboard provides a wallet selector to switch between them.
+
 ### 🎯 Sub-Address Isolation (`deposit_address`)
 
 Each fund exposes an optional `deposit_address` field. When set (for example, a subaddress starting with `8...`), the scanner **filters all incoming transfers** and counts only transactions arriving at that specific address. Personal transfers to the primary address or other subaddresses are silently ignored.
 
 Changing the `deposit_address` automatically resets scan history and triggers a full rescan.
+
+### 🎨 Per-Fund Widget Styling
+
+Each fund has its own `widget_background_color` and `widget_text_color`, configurable via the fund settings page. Drop a `<script>` tag into any website to display live donation progress, a QR code, and a collapsible news feed — all branded to match your campaign.
 
 ### 📊 Advanced Analytics (4 Charts)
 
@@ -99,7 +107,7 @@ All exports respect the same filters and sorting as the live transaction table.
 
 ### ⚡ Real-Time Updates via SSE
 
-The scanner publishes events to Redis Pub/Sub. The frontend listens to `/api/v1/funds/{id}/events` over **Server-Sent Events** (SSE) with a 30-second heartbeat, updating the dashboard instantly as new donations arrive — no polling required.
+The scanner publishes events to Redis Pub/Sub. The frontend listens to `/api/v1/wallets/{id}/events` over **Server-Sent Events** (SSE) with a 30-second heartbeat, updating the dashboard instantly as new donations arrive — no polling required.
 
 ---
 
@@ -139,25 +147,38 @@ The admin dashboard provides real-time analytics, transaction filtering, multi-f
 │             │      │   Backend    │      │   Database  │
 └─────────────┘      └──────┬───────┘      └─────────────┘
                             │
-                            ▼
-                   ┌────────────────┐
-                   │ monero-wallet- │
-                   │     rpc        │
-                   └────────────────┘
-                            │
-                   ┌────────┴────────┐
-                   │  Redis (SSE)    │
-                   └─────────────────┘
+              ┌─────────────┼──────────────┐
+              ▼             ▼               ▼
+     ┌──────────────┐ ┌─────────┐  ┌──────────────┐
+     │ monero-wallet│ │  Redis  │  │   Worker     │
+     │     rpc      │ │ (SSE)   │  │  (scanner)   │
+     └──────────────┘ └─────────┘  └──────────────┘
 ```
 
 | Service | Role |
 |---------|------|
-| `postgres` | Stores `Fund`, `Transaction`, `Post`, and runtime settings |
+| `postgres` | Stores `Wallet`, `Fund`, `Transaction`, `Post`, and runtime settings |
 | `redis` | Pub/Sub broker for SSE real-time updates |
-| `monero-wallet-rpc` | Single view-only RPC wallet (`ghcr.io/sethforprivacy/simple-monero-wallet-rpc`) |
+| `monero-wallet-rpc` | View-only RPC wallet supporting multiple wallets (`--wallet-dir`) |
 | `backend` | FastAPI app — REST API, auth, reports, widget endpoints |
-| `worker` | Background blockchain scanner (`python -m worker.scanner`) |
+| `worker` | Background blockchain scanner (`python -m worker.scanner`) — scans all active wallets |
 | `frontend` | Vue 3 SPA built with Vite; served by nginx |
+
+### Data Model
+
+```text
+Wallet 1 ──┬── Fund A (deposit_address: 8abc…) ──┬── Transaction 1
+           │                                       └── Transaction 2
+           ├── Fund B (deposit_address: 8def…) ──┬── Transaction 3
+           │                                       └── Post 1
+           └── Fund C (deposit_address: 8ghi…) ──── Post 2
+
+Wallet 2 ──── Fund D (deposit_address: 8jkl…) ── Transaction 4
+```
+
+- One **Wallet** holds the view key and represents a Monero view-only wallet on `monero-wallet-rpc`.
+- Each **Fund** has a unique `deposit_address` (typically a sub-address) and belongs to one wallet.
+- **Transactions** and **Posts** are linked to both a fund and a wallet (with cascade delete).
 
 ### Directory Structure
 
@@ -165,31 +186,35 @@ The admin dashboard provides real-time analytics, transaction filtering, multi-f
 xmr-fund-transparency-suite/
 ├── backend/                    # FastAPI Application
 │   ├── app/
-│   │   ├── api/v1/endpoints/   # REST routes (funds, transactions, posts, exports, widget, events)
-│   │   ├── reports/          # Report generators (pdf.py, xlsx.py, csv_export.py, xml.py, json_export.py)
-│   │   ├── models.py         # SQLAlchemy 2.0 models (Fund, Transaction, Post)
-│   │   ├── crypto.py         # Fernet AES-256 view-key encryption
-│   │   ├── filters.py        # Shared transaction filter/sort logic
-│   │   └── rpc_client.py     # monero-wallet-rpc helpers
+│   │   ├── api/v1/endpoints/   # REST routes (wallets, funds, transactions, posts, exports, widget, events)
+│   │   ├── reports/            # Report generators (pdf.py, xlsx.py, csv_export.py, xml.py, json_export.py, png_widget.py)
+│   │   ├── models.py           # SQLAlchemy 2.0 models (Wallet, Fund, Transaction, Post)
+│   │   ├── schemas.py          # Pydantic v2 schemas (WalletCreate, FundCreate, PostCreate, etc.)
+│   │   ├── crypto.py           # Fernet AES-256 view-key encryption
+│   │   ├── filters.py          # Shared transaction filter/sort logic
+│   │   ├── rpc_client.py       # monero-wallet-rpc helpers (multi-wallet: create, open, get_transfers, close)
+│   │   ├── settings.py          # JSON-file runtime settings
+│   │   ├── validators.py       # Datetime format & color validation
+│   │   └── auth.py              # API key middleware
 │   ├── worker/
-│   │   └── scanner.py        # Async background blockchain scanner
-│   ├── tests/                # pytest suite (auth, crypto, reports, scanner)
-│   └── Dockerfile            # Includes pango/cairo deps for WeasyPrint
+│   │   └── scanner.py          # Async background blockchain scanner (multi-wallet)
+│   ├── tests/                  # pytest suite (auth, crypto, reports, scanner)
+│   └── Dockerfile              # Includes pango/cairo deps for WeasyPrint
 ├── frontend/                   # Vue 3 + Vite + TailwindCSS + Chart.js
 │   └── src/
-│       ├── pages/            # Dashboard, News, Settings, Widget
-│       ├── components/       # Charts, Filters, FundCard, WidgetPreview
-│       ├── composables/      # useFund, useSSE, useDatetimeFormat, useTransactionFilters
+│       ├── pages/              # Dashboard, Wallets, WalletDetail, FundDetail, News, Settings
+│       ├── components/         # Charts, Filters, FundCard, WidgetPreview, ColorPicker
+│       ├── composables/        # useFund, useSSE, useDatetimeFormat, useChartPreferences, useTransactionFilters
 │       └── stores/
-│           └── fund.ts       # Pinia store (API key, current fund, auth)
+│           └── fund.ts         # Pinia store (API key, wallets, funds, auth, SSE)
 ├── scripts/
-│   ├── setup.sh              # One-command deploy / dev / stop / clean
-│   ├── update.sh             # Release-based updates with backups and rollback
-│   └── test-data.sh          # Seed demo transactions
+│   ├── setup.sh                # One-command deploy / dev / stop / clean
+│   ├── update.sh               # Release-based updates with backups and rollback
+│   └── test-data.sh            # Seed demo transactions (use --multi for multi-wallet)
 ├── docker-compose.yml          # Unified compose (prod + dev via env override)
 ├── .env.example                # All configurable environment variables
 └── data/
-    └── settings.json           # Runtime settings (datetime format, widget colors)
+    └── settings.json           # Runtime settings (datetime format)
 ```
 
 ---
@@ -235,7 +260,11 @@ APP_URL=localhost       # Change to your domain (e.g., dashboard.example.com)
 
 ### Step 4: Open the Dashboard
 
-Navigate to `http://localhost:3000` and log in with your API key.
+Navigate to `http://localhost:3000` and log in with your API key. From the dashboard you can:
+
+1. **Create a wallet** — provide your Monero primary address and private view key
+2. **Create funds** — each fund has its own deposit sub-address and fundraising target
+3. **Customize widget** — each fund has its own colors, description, and public website
 
 ### Development Mode (Hot Reload)
 
@@ -265,6 +294,9 @@ To see charts and tables in action before real donations arrive, seed the databa
 
 # Use with the dev environment
 ./scripts/test-data.sh --dev --count=100
+
+# Seed multi-wallet demo data (3 wallets × 2 funds + transactions)
+./scripts/test-data.sh --multi
 ```
 
 The script creates a test fund if none exists and appends new rows on every run — existing data is never deleted.
@@ -338,31 +370,64 @@ All times are returned in ISO 8601 format unless a custom datetime pattern is co
 
 ### Admin API — Requires `X-API-Key` Header
 
+#### Wallets
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `POST` | `/api/v1/funds` | Create a fund (one per instance; returns 409 if exists) |
-| `GET` | `/api/v1/funds` | List funds |
+| `POST` | `/api/v1/wallets` | Create a view-only wallet (address + view key + start height) |
+| `GET` | `/api/v1/wallets` | List all wallets |
+| `GET` | `/api/v1/wallets/{id}` | Wallet detail |
+| `PATCH` | `/api/v1/wallets/{id}` | Update wallet name or active status |
+| `DELETE` | `/api/v1/wallets/{id}` | Delete wallet + all its funds, transactions, and posts; close on RPC |
+
+#### Funds
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `POST` | `/api/v1/funds` | Create a fund linked to a wallet |
+| `GET` | `/api/v1/funds` | List funds (optionally filter by `wallet_id`) |
 | `GET` | `/api/v1/funds/{id}` | Fund detail + stats (`total_received_xmr`, `transaction_count`, `last_tx_at`) |
-| `PATCH` | `/api/v1/funds/{id}` | Update label, description, `is_active`, target, or `deposit_address` |
-| `DELETE` | `/api/v1/funds/{id}` | Delete fund, transactions, posts, and close the RPC wallet |
-| `GET` | `/api/v1/funds/{id}/txs` | Paginated transactions with date range, tier, and multi-sort filters |
+| `PATCH` | `/api/v1/funds/{id}` | Update label, description, `is_active`, target, `deposit_address`, widget colors, public website |
+| `DELETE` | `/api/v1/funds/{id}` | Delete fund + its transactions and posts |
+
+#### Transactions
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/funds/{id}/txs` | Paginated transactions for a fund (date range, tier, multi-sort, cursor) |
+| `GET` | `/api/v1/wallets/{id}/txs` | Paginated transactions for a wallet across all its funds (optional `fund_id` filter) |
+
+#### Exports & Reports
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/funds/{id}/export/{format}` | Unified export: `pdf`, `xlsx`, `csv`, `xml`, `json` (same filters as `/txs`) |
 | `GET` | `/api/v1/funds/{id}/report.pdf` | PDF report (WeasyPrint) |
 | `GET` | `/api/v1/funds/{id}/report.xml` | XML report |
-| `GET` | `/api/v1/funds/{id}/export/{format}` | Unified export: `pdf`, `xlsx`, `csv`, `xml`, `json` (same filters as `/txs`) |
-| `GET` | `/api/v1/funds/{id}/events` | SSE real-time stream (30s heartbeat) |
-| `POST` | `/api/v1/posts` | Create a news post |
-| `PATCH` | `/api/v1/posts/{id}` | Update a post |
+| `GET` | `/api/v1/funds/{id}/widget-png` | Download widget as PNG image (`format` query: `business_card`, `wide`, `vertical`) |
+
+#### Real-Time & Posts
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/v1/wallets/{id}/events` | SSE real-time stream for wallet scan updates (30s heartbeat) |
+| `POST` | `/api/v1/posts` | Create a news post (requires `fund_id`) |
+| `PATCH` | `/api/v1/posts/{id}` | Update a post (body and/or move to another fund) |
 | `DELETE` | `/api/v1/posts/{id}` | Delete a post |
+
+#### Settings
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
 | `GET` | `/api/v1/settings/datetime-format` | Get current datetime pattern |
 | `PUT` | `/api/v1/settings/datetime-format` | Update datetime pattern |
-| `PUT` | `/api/v1/settings/widget-color` | Update widget base color |
-| `PUT` | `/api/v1/settings/widget-text-color` | Update widget text color |
 
 ### Public API — No Authentication Required
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/v1/posts` | List all posts (newest first) |
+| `GET` | `/api/v1/posts` | List posts (filter by `fund_id`, `wallet_id`, `start_date`, `end_date`) |
+| `GET` | `/api/v1/wallets/{id}/posts` | List all posts for a wallet across its funds |
 | `GET` | `/widget/{uuid}.js` | Embeddable JavaScript widget (QR code + news) |
 | `GET` | `/widget/{uuid}.json` | Widget JSON data |
 | `GET` | `/widget/{uuid}/posts.json` | Widget posts JSON |

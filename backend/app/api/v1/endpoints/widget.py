@@ -23,11 +23,10 @@ from app.models import Fund, Post, Transaction
 from app.reports.csv_export import generate_csv_export
 from app.reports.json_export import generate_json_export
 from app.reports.xml import generate_xml_report
-from app.settings import (
-    get_datetime_format,
-    get_widget_base_color,
-    get_widget_text_color,
-)
+from app.settings import get_datetime_format
+
+DEFAULT_WIDGET_BG_COLOR = "#667eea"
+DEFAULT_WIDGET_TEXT_COLOR = "#ffffff"
 
 router = APIRouter()
 
@@ -281,6 +280,7 @@ function xmrLoadMoreNews() {
                 'background: linear-gradient(135deg, ' + baseColor + ' 0%, ' + endColor + ' 100%);' +
                 'color: ' + textColor + '; padding: 24px; border-radius: 12px;' +
                 'box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%;' +
+                'display: flex; flex-direction: column;' +
                 '">' +
                 '<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">' +
                 '<div style="flex:1;min-width:200px;">' +
@@ -296,6 +296,7 @@ function xmrLoadMoreNews() {
                 '</div>' +
                 rightHtml +
                 '</div>' +
+                '<div style="font-size:11px;opacity:0.6;padding-top:12px;"><a href="https://xmrfts.com" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none;">Widget powered by xmrfts.com</a></div>' +
                 newsSectionHtml +
                 '</div>';
 
@@ -325,7 +326,6 @@ async def get_widget_js(
         raise HTTPException(status_code=404, detail="Fund not found")
 
     # Use configured app origin so widget URLs are always correct
-    # (not request.base_url which reflects internal Docker network)
     origin = settings.app_origin
 
     widget_js = WIDGET_JS_TEMPLATE.replace("UUID_PLACEHOLDER", uuid).replace(
@@ -489,7 +489,7 @@ async def public_widget_export(
     ]
 
     dt_format = get_datetime_format()
-    deposit_addr = fund.deposit_address or fund.primary_address
+    deposit_addr = fund.deposit_address
     fund_id_str = str(fund.id)
     filter_meta_or_none = filter_meta if filter_meta else None
 
@@ -581,7 +581,7 @@ async def get_widget_json(
     )
     fresh_posts_count = fresh_posts_result.scalar()
 
-    deposit_addr = fund.deposit_address or fund.primary_address
+    deposit_addr = fund.deposit_address
 
     # Monero URI scheme: monero:<address> — recognized by wallet apps
     qr_data_url = _generate_qr_data_url(f"monero:{deposit_addr}")
@@ -599,8 +599,9 @@ async def get_widget_json(
         "post_count": post_count,
         "fresh_posts_count": fresh_posts_count,
         "last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "base_color": get_widget_base_color(),
-        "text_color": get_widget_text_color(),
+        "base_color": fund.widget_background_color or DEFAULT_WIDGET_BG_COLOR,
+        "text_color": fund.widget_text_color or DEFAULT_WIDGET_TEXT_COLOR,
+        "public_website": fund.public_website,
     }
 
     return JSONResponse(

@@ -22,16 +22,16 @@
               </div>
             </router-link>
             <router-link
-              to="/widget"
+              to="/wallets"
               class="nav-link"
               :class="{
                 'text-white bg-monero-orange/20 rounded-md':
-                  $route.path === '/widget',
+                  $route.path.startsWith('/wallets'),
               }"
             >
               <div class="flex items-center space-x-1">
-                <Code2 :size="16" />
-                <span>Widget</span>
+                <Wallet :size="16" />
+                <span>Wallets</span>
               </div>
             </router-link>
             <router-link
@@ -75,7 +75,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import { useRouter } from "vue-router";
-import { Landmark, Settings, Code2, LogOut, Newspaper } from "@lucide/vue";
+import { Landmark, Settings, Wallet, LogOut, Newspaper } from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
 
 const router = useRouter();

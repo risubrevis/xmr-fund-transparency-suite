@@ -7,7 +7,7 @@ from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Fund
+from app.models import Wallet
 
 router = APIRouter()
 
@@ -85,16 +85,27 @@ async def healthcheck(db: AsyncSession = Depends(get_db)) -> dict:
     rpc_url = os.environ.get("MONERO_RPC_URL", "http://localhost:18082/json_rpc")
     rpc_status = await check_rpc_status(rpc_url)
 
-    # Get scanner status
-    result = await db.execute(select(Fund).where(Fund.is_active.is_(True)))
-    fund = result.scalar_one_or_none()
+    # Get scanner status from all active wallets
+    result = await db.execute(select(Wallet).where(Wallet.is_active.is_(True)))
+    active_wallets = result.scalars().all()
+
+    wallets_status = []
+    for wallet in active_wallets:
+        wallets_status.append(
+            {
+                "wallet_id": str(wallet.id),
+                "name": wallet.name,
+                "last_scan_at": wallet.last_scan_at.isoformat()
+                if wallet.last_scan_at
+                else None,
+                "last_scanned_height": wallet.last_scanned_height,
+                "scan_error": wallet.scan_error,
+            }
+        )
 
     scanner_status = {
-        "last_scan_at": fund.last_scan_at.isoformat()
-        if fund and fund.last_scan_at
-        else None,
-        "last_scanned_height": fund.last_scanned_height if fund else None,
-        "scan_error": fund.scan_error if fund else None,
+        "active_wallet_count": len(active_wallets),
+        "wallets": wallets_status,
     }
 
     all_statuses = [db_status["status"], redis_status["status"], rpc_status["status"]]

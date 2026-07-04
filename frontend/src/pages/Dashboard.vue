@@ -89,32 +89,54 @@
     <!-- Authenticated Content -->
     <template v-else>
       <!-- Loading -->
-      <div v-if="loading && !currentFund" class="text-center py-16">
+      <div v-if="loading" class="text-center py-16">
         <Loader2 class="mx-auto animate-spin text-monero-orange" :size="40" />
-        <p class="text-gray-600 mt-4">Loading fund data...</p>
+        <p class="text-gray-600 mt-4">Loading data...</p>
       </div>
 
-      <!-- Error loading fund -->
-      <div v-else-if="error && !currentFund" class="text-center py-16">
+      <!-- Error -->
+      <div v-else-if="error" class="text-center py-16">
         <AlertTriangle class="mx-auto text-amber-500" :size="40" />
         <h2 class="text-xl font-bold text-gray-900 mt-4 mb-2">
-          Error Loading Fund
+          Error Loading Data
         </h2>
         <p class="text-gray-600 mb-4">{{ error }}</p>
         <Button variant="default" @click="retryLoad">Retry</Button>
       </div>
 
-      <!-- No fund configured -->
-      <div v-else-if="!currentFund" class="text-center py-16">
+      <!-- No wallet configured -->
+      <div v-else-if="wallets.length === 0" class="text-center py-16">
+        <Wallet class="mx-auto text-gray-400" :size="48" />
+        <h2 class="text-2xl font-bold text-gray-900 mt-4 mb-2">
+          No Wallet Configured
+        </h2>
+        <p class="text-gray-600 mb-6">
+          Create a wallet and fund to start tracking incoming Monero donations.
+        </p>
+        <router-link to="/wallets">
+          <Button variant="default" size="lg">
+            <div class="flex items-center space-x-2">
+              <PlusCircle :size="18" />
+              <span>Go to Wallets</span>
+            </div>
+          </Button>
+        </router-link>
+      </div>
+
+      <!-- No fund for selected wallet -->
+      <div
+        v-else-if="currentWallet && funds.length === 0 && !currentFund"
+        class="text-center py-16"
+      >
         <Wallet class="mx-auto text-gray-400" :size="48" />
         <h2 class="text-2xl font-bold text-gray-900 mt-4 mb-2">
           No Fund Configured
         </h2>
         <p class="text-gray-600 mb-6">
-          Set up your first view-only wallet to start tracking incoming Monero
+          This wallet has no funds yet. Create a fund to start tracking
           donations.
         </p>
-        <router-link to="/settings">
+        <router-link :to="`/wallets/${currentWallet.uuid}`">
           <Button variant="default" size="lg">
             <div class="flex items-center space-x-2">
               <PlusCircle :size="18" />
@@ -124,78 +146,101 @@
         </router-link>
       </div>
 
-      <!-- Fund Dashboard -->
-      <template v-else>
-        <FundCard :fund="currentFund" :stats="currentFund.stats" />
+      <!-- Dashboard with wallet/fund selectors -->
+      <template v-else-if="currentWallet && currentFund">
+        <!-- Wallet Selector -->
+        <Selector
+          :model-value="currentWallet.id"
+          :options="walletOptions"
+          :disabled="wallets.length <= 1 || switchingWallet"
+          label="Wallet"
+          @update:model-value="onWalletChange"
+        />
 
-        <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <CumulativeReceivedChart
-            :transactions="transactions"
-            :target-amount="currentFund.target_amount_xmr"
-            :loading="loadingTransactions"
-          />
-          <TargetProgressBar
-            :total-received="currentFund.stats?.total_received_xmr || '0.00'"
-            :target-amount="currentFund.target_amount_xmr"
-            :loading="loadingTransactions"
-          />
-          <TimeDistributionChart
-            :transactions="transactions"
-            :loading="loadingTransactions"
-          />
-          <DonutSizeDistribution
-            :transactions="transactions"
-            :loading="loadingTransactions"
-          />
+        <div v-if="switchingWallet" class="text-center py-8">
+          <Loader2 class="mx-auto animate-spin text-monero-orange" :size="32" />
+          <p class="text-gray-600 mt-3 text-sm">Loading wallet data...</p>
         </div>
 
-        <!-- Filter & Sort Toolbar -->
-        <div class="mt-6">
-          <TransactionFilters
-            :start-date="filters.startDate.value"
-            :end-date="filters.endDate.value"
-            :selected-tiers="filters.selectedTiers.value"
-            :sort-rules="filters.sortRules.value"
-            :date-error="filters.dateError.value"
-            :has-active-filters="filters.hasActiveFilters.value"
-            @update:start-date="filters.startDate.value = $event"
-            @update:end-date="filters.endDate.value = $event"
-            @toggle-tier="filters.toggleTier($event)"
-            @add-sort="filters.addSortRule()"
-            @remove-sort="filters.removeSortRule($event)"
-            @update-sort-field="filters.updateSortField($event[0], $event[1])"
-            @update-sort-direction="
-              filters.updateSortDirection($event[0], $event[1])
-            "
-            @reset="resetFiltersAndReload"
+        <template v-else>
+          <!-- Wallet info card -->
+          <FundCard
+            :fund="currentFund"
+            :wallet="currentWallet"
+            :stats="currentFund.stats"
+            :refreshing="refreshing"
+            @refresh="refreshData"
           />
-        </div>
 
-        <!-- Export Button Group -->
-        <div class="mt-4">
-          <ExportButtonGroup
-            :fund-id="currentFund.id"
-            :filters="filters.buildFilters()"
-          />
-        </div>
+          <!-- Fund Selector -->
+          <div v-if="funds.length > 1" class="mt-4">
+            <Selector
+              :model-value="currentFund.id"
+              :options="fundOptions"
+              :disabled="switchingFund"
+              label="Fund"
+              @update:model-value="onFundChange"
+            />
+          </div>
 
-        <div class="mt-6">
-          <TransactionTable
-            :transactions="transactions"
-            :has-more="hasMore"
-            :loading="loadingMore"
-            @load-more="loadMoreTransactions"
-          />
-        </div>
+          <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <CumulativeReceivedChart
+              :transactions="transactions"
+              :target-amount="currentFund.target_amount_xmr"
+              :loading="loadingTransactions"
+            />
+            <TargetProgressBar
+              :total-received="currentFund.stats?.total_received_xmr || '0.00'"
+              :target-amount="currentFund.target_amount_xmr"
+              :loading="loadingTransactions"
+            />
+            <TimeDistributionChart
+              :transactions="transactions"
+              :loading="loadingTransactions"
+            />
+            <DonutSizeDistribution
+              :transactions="transactions"
+              :loading="loadingTransactions"
+            />
+          </div>
 
-        <div class="mt-4">
-          <Button variant="outline" @click="refreshData">
-            <div class="flex items-center space-x-1">
-              <RefreshCw :size="16" />
-              <span>Refresh</span>
-            </div>
-          </Button>
-        </div>
+          <!-- Filter & Sort Toolbar -->
+          <div class="mt-6">
+            <TransactionFilters
+              :start-date="filters.startDate.value"
+              :end-date="filters.endDate.value"
+              :selected-tiers="filters.selectedTiers.value"
+              :sort-rules="filters.sortRules.value"
+              :date-error="filters.dateError.value"
+              :has-active-filters="filters.hasActiveFilters.value"
+              @update:start-date="filters.startDate.value = $event"
+              @update:end-date="filters.endDate.value = $event"
+              @toggle-tier="filters.toggleTier($event)"
+              @add-sort="filters.addSortRule()"
+              @remove-sort="filters.removeSortRule($event)"
+              @update-sort-field="filters.updateSortField"
+              @update-sort-direction="filters.updateSortDirection"
+              @reset="resetFiltersAndReload"
+            />
+          </div>
+
+          <!-- Export Button Group -->
+          <div class="mt-4">
+            <ExportButtonGroup
+              :fund-id="currentFund.id"
+              :filters="filters.buildFilters()"
+            />
+          </div>
+
+          <div class="mt-6">
+            <TransactionTable
+              :transactions="transactions"
+              :has-more="hasMore"
+              :loading="loadingMore"
+              @load-more="loadMoreTransactions"
+            />
+          </div>
+        </template>
       </template>
     </template>
   </div>
@@ -215,7 +260,6 @@ import {
   AlertTriangle,
   Wallet,
   PlusCircle,
-  RefreshCw,
 } from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
 import { fundsApi, type Transaction } from "@/lib/api";
@@ -229,6 +273,7 @@ import TransactionTable from "@/components/Dashboard/TransactionTable.vue";
 import TransactionFilters from "@/components/Dashboard/TransactionFilters.vue";
 import ExportButtonGroup from "@/components/Dashboard/ExportButtonGroup.vue";
 import { Button } from "@/components/ui/button";
+import { Selector, type SelectorOption } from "@/components/ui/selector";
 
 const router = useRouter();
 const store = useFundStore();
@@ -236,12 +281,32 @@ const filters = useTransactionFilters();
 
 const apiKeyInput = ref("");
 const showKey = ref(false);
+const switchingWallet = ref(false);
+const switchingFund = ref(false);
+const refreshing = ref(false);
 const authError = computed(() => store.authError);
 const validating = computed(() => store.validating);
 const apiKeySet = computed(() => store.apiKeySet);
 const currentFund = computed(() => store.currentFund);
+const currentWallet = computed(() => store.currentWallet);
+const wallets = computed(() => store.wallets);
+const funds = computed(() => store.funds);
 const loading = computed(() => store.loading);
 const error = computed(() => store.error);
+
+const walletOptions = computed<SelectorOption[]>(() =>
+  wallets.value.map((w) => ({
+    value: w.id,
+    label: w.name,
+  })),
+);
+
+const fundOptions = computed<SelectorOption[]>(() =>
+  funds.value.map((f) => ({
+    value: f.id,
+    label: f.label,
+  })),
+);
 
 const transactions = ref<Transaction[]>([]);
 const hasMore = ref(false);
@@ -267,13 +332,36 @@ watch(
 
 watch(
   currentFund,
-  async (fund) => {
+  async (fund, oldFund) => {
     if (fund) {
+      // Reset filters when switching to a different fund
+      if (oldFund && fund.id !== oldFund.id) {
+        filters.resetFilters();
+      }
       await loadTransactions();
     }
   },
   { immediate: true },
 );
+
+async function onWalletChange(walletId: string) {
+  switchingWallet.value = true;
+  try {
+    await store.selectWallet(walletId);
+    // selectWallet already loads funds and sets currentFund
+  } finally {
+    switchingWallet.value = false;
+  }
+}
+
+async function onFundChange(fundId: string) {
+  switchingFund.value = true;
+  try {
+    await store.selectFund(fundId);
+  } finally {
+    switchingFund.value = false;
+  }
+}
 
 async function login() {
   if (!apiKeyInput.value.trim()) return;
@@ -341,10 +429,16 @@ function resetFiltersAndReload() {
 }
 
 async function refreshData() {
-  if (!currentFund.value) return;
-  await store.fetchFund(currentFund.value.id);
-  if (currentFund.value) {
+  if (!currentFund.value || !currentWallet.value) return;
+  refreshing.value = true;
+  try {
+    await Promise.all([
+      store.fetchFund(currentFund.value.id),
+      store.fetchWallet(currentWallet.value.id),
+    ]);
     await loadTransactions();
+  } finally {
+    refreshing.value = false;
   }
 }
 

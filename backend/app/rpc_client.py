@@ -1,4 +1,10 @@
-"""Monero Wallet RPC client for creating/opening view-only wallets."""
+"""Monero Wallet RPC client for multi-wallet operations.
+
+Supports monero-wallet-rpc running with --wallet-dir, which allows
+multiple wallets to be managed concurrently. Each wallet is identified
+by a deterministic filename based on its database UUID:
+wallet_{wallet_uuid}.
+"""
 
 from typing import Optional
 
@@ -88,96 +94,129 @@ async def create_view_only_wallet(
     address: str,
     view_key: str,
     start_height: int,
-    wallet_name: str = "viewonly",
+    filename: str,
+    password: str = "",
 ) -> dict:
-    """
-    Create a view-only wallet on monero-wallet-rpc using generate_from_keys.
+    """Create a view-only wallet on monero-wallet-rpc using generate_from_keys.
 
-    If the wallet file already exists, closes the current wallet and re-opens it.
+    Uses the deterministic filename (wallet_{uuid}) to register the wallet
+    in the multi-wallet RPC environment.
+
+    If the wallet file already exists, closes the current wallet context
+    and re-opens the existing one.
+
     Returns the RPC response dict.
     """
     logger.info(
         "creating_view_only_wallet",
+        filename=filename,
         address=address[:12] + "...",
         start_height=start_height,
     )
-    # generate_from_keys can take a long time as it starts wallet sync.
-    # Use a longer timeout for this specific call.
     try:
         result = await rpc_call(
             "generate_from_keys",
             {
+                "filename": filename,
                 "address": address,
                 "viewkey": view_key,
                 "restore_height": start_height,
-                "filename": wallet_name,
-                "password": "",
+                "password": password,
             },
-            timeout=300.0,  # 5 minutes for wallet creation
+            timeout=300.0,  # 5 minutes for wallet creation/sync
         )
-        logger.info("view_only_wallet_created", result=str(result)[:200])
+        logger.info(
+            "view_only_wallet_created",
+            filename=filename,
+            result=str(result)[:200],
+        )
         return result
     except WalletRPCError as e:
-        # If wallet file already exists, close current wallet and open the existing one
+        # If wallet file already exists, close current context and re-open
         if "file_exists" in str(e).lower() or "already exists" in str(e).lower():
             logger.info(
                 "wallet_file_exists_reopening",
-                wallet_name=wallet_name,
+                filename=filename,
                 original_error=str(e),
             )
-            # Close whatever wallet is currently open
             try:
                 await close_wallet()
             except Exception:
                 pass  # No wallet may be open
 
-            # Open the existing wallet
-            result = await open_wallet(wallet_name)
-            logger.info("wallet_reopened", wallet_name=wallet_name)
+            result = await open_wallet(filename, password)
+            logger.info("wallet_reopened", filename=filename)
             return result
         raise
 
 
-async def open_wallet(wallet_name: str = "viewonly", password: str = "") -> dict:
-    """Open an existing wallet on monero-wallet-rpc."""
-    logger.info("opening_wallet", wallet_name=wallet_name)
+async def open_wallet(filename: str, password: str = "") -> dict:
+    """Open an existing wallet on monero-wallet-rpc by filename.
+
+    Handles the "already open" error (RPC code -7) gracefully —
+    if the wallet is already loaded in memory, just proceed.
+    """
+    logger.info("opening_wallet", filename=filename)
+    try:
+        return await rpc_call(
+            "open_wallet",
+            {"filename": filename, "password": password},
+        )
+    except WalletRPCError as e:
+        if e.rpc_code == -7 or "already open" in str(e).lower():
+            # Wallet is already open in memory — this is fine
+            logger.info("wallet_already_open", filename=filename)
+            return {}
+        raise
+
+
+async def get_transfers(
+    filename: str,
+    min_height: int,
+    account_index: int = 0,
+) -> dict:
+    """Get incoming transfers for a specific wallet.
+
+    The filename parameter routes the request to the correct wallet
+    in multi-wallet mode.
+    """
     return await rpc_call(
-        "open_wallet",
+        "get_transfers",
         {
-            "filename": wallet_name,
-            "password": password,
+            "filename": filename,
+            "in": True,
+            "account_index": account_index,
+            "filter_by_height": True,
+            "min_height": min_height,
         },
     )
 
 
-async def get_wallet_height() -> int:
-    """Get the current wallet block height."""
-    result = await rpc_call("get_height")
+async def get_wallet_height(filename: str) -> int:
+    """Get the current block height for a specific wallet."""
+    result = await rpc_call("get_height", {"filename": filename})
     return result.get("height", 0)
 
 
-async def close_wallet() -> None:
-    """Close the current wallet."""
+async def get_balance(filename: str, account_index: int = 0) -> dict:
+    """Get the balance for a specific wallet."""
+    return await rpc_call(
+        "get_balance",
+        {"filename": filename, "account_index": account_index},
+    )
+
+
+async def close_wallet(filename: str | None = None) -> None:
+    """Close a wallet on monero-wallet-rpc.
+
+    In multi-wallet mode, if filename is provided, the wallet with
+    that filename is closed. If filename is None, the currently
+    active wallet context is closed.
+    """
+    params = {}
+    if filename:
+        params["filename"] = filename
     try:
-        await rpc_call("close_wallet")
+        await rpc_call("close_wallet", params)
     except Exception:
         pass  # Ignore errors if no wallet is open
-
-
-async def delete_wallet(wallet_name: str = "viewonly") -> None:
-    """Delete a wallet file from monero-wallet-rpc.
-
-    This uses the internal RPC method to delete the wallet file.
-    Falls back to closing if delete is not available.
-    """
-    logger.info("deleting_wallet", wallet_name=wallet_name)
-    try:
-        # First close the wallet if open
-        await close_wallet()
-    except Exception:
-        pass
-
-    try:
-        logger.info("wallet_closed_after_delete", wallet_name=wallet_name)
-    except Exception as e:
-        logger.warning("wallet_delete_failed", wallet_name=wallet_name, error=str(e))

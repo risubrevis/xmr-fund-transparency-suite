@@ -12,8 +12,8 @@
           {{ fund.description }}
         </p>
         <p class="text-xs text-gray-500 font-mono mt-1">
-          {{ (fund.deposit_address || fund.primary_address).slice(0, 16) }}...{{
-            (fund.deposit_address || fund.primary_address).slice(-12)
+          {{ fund.deposit_address.slice(0, 16) }}...{{
+            fund.deposit_address.slice(-12)
           }}
         </p>
       </div>
@@ -31,15 +31,15 @@
           {{ fund.is_active ? "Active" : "Inactive" }}
         </span>
         <span
-          v-if="fund.scan_error"
+          v-if="wallet?.scan_error"
           class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-red-100 text-red-800"
-          :title="fund.scan_error"
+          :title="wallet.scan_error"
         >
           <AlertTriangle :size="12" class="mr-1" />
           Scan Error
         </span>
         <span
-          v-else-if="fund.last_scan_at"
+          v-else-if="wallet?.last_scan_at"
           class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-700"
         >
           <Radio :size="12" class="mr-1" />
@@ -67,43 +67,71 @@
       <div>
         <p class="text-sm text-gray-500">Last Scan</p>
         <p class="text-sm text-gray-700">
-          {{ fund.last_scan_at ? formatDate(fund.last_scan_at) : "Never" }}
+          {{ wallet?.last_scan_at ? formatDate(wallet.last_scan_at) : "Never" }}
         </p>
         <p class="text-xs text-gray-500 mt-1">
           Block height:
-          {{ fund.last_scanned_height?.toLocaleString() ?? "Not started" }}
+          {{ wallet?.last_scanned_height?.toLocaleString() ?? "Not started" }}
         </p>
       </div>
     </div>
 
     <div
-      v-if="fund.scan_error"
+      v-if="wallet?.scan_error"
       class="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start space-x-2"
     >
       <AlertTriangle :size="16" class="text-red-600 flex-shrink-0 mt-0.5" />
       <div>
         <p class="text-sm font-semibold text-red-800">Scan error</p>
-        <p class="text-sm text-red-700">{{ fund.scan_error }}</p>
+        <p class="text-sm text-red-700">{{ wallet.scan_error }}</p>
       </div>
+    </div>
+
+    <div class="mt-4 pt-4 border-t border-gray-100">
+      <Button
+        variant="outline"
+        :disabled="refreshing"
+        @click="$emit('refresh')"
+      >
+        <div class="flex items-center space-x-1">
+          <Loader2 v-if="refreshing" :size="14" class="animate-spin" />
+          <RefreshCw v-else :size="14" />
+          <span>{{ refreshing ? "Refreshing..." : "Refresh" }}</span>
+        </div>
+      </Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted } from "vue";
-import { CircleCheck, CircleX, AlertTriangle, Radio } from "@lucide/vue";
-import type { Fund } from "@/lib/api";
+import {
+  CircleCheck,
+  CircleX,
+  AlertTriangle,
+  Radio,
+  RefreshCw,
+  Loader2,
+} from "@lucide/vue";
+import type { Fund, Wallet } from "@/lib/api";
 import { useDatetimeFormat } from "@/composables/useDatetimeFormat";
+import { Button } from "@/components/ui/button";
 
 const { formatDate: formatWithPattern, loadFormat } = useDatetimeFormat();
 
-const props = defineProps<{
+defineProps<{
   fund: Fund;
+  wallet?: Wallet | null;
   stats?: {
     total_received_xmr: string;
     transaction_count: number;
     last_tx_at: string | null;
   };
+  refreshing?: boolean;
+}>();
+
+defineEmits<{
+  refresh: [];
 }>();
 
 onMounted(() => {

@@ -8,8 +8,6 @@ logger = get_logger("app.settings")
 
 DEFAULT_SETTINGS = {
     "datetime_format": "YYYY-MM-DD HH:mm:ss",
-    "widget_base_color": "#667eea",
-    "widget_text_color": "#ffffff",
 }
 
 SETTINGS_FILE_PATH = os.environ.get("SETTINGS_FILE_PATH", "settings.json")
@@ -60,33 +58,3 @@ def set_datetime_format(format_str: str) -> str:
     settings["datetime_format"] = format_str
     save_settings(settings)
     return format_str
-
-
-def get_widget_base_color() -> str:
-    """Get the current widget base color."""
-    return load_settings().get(
-        "widget_base_color", DEFAULT_SETTINGS["widget_base_color"]
-    )
-
-
-def set_widget_base_color(color: str) -> str:
-    """Set the widget base color and persist it."""
-    settings = load_settings()
-    settings["widget_base_color"] = color
-    save_settings(settings)
-    return color
-
-
-def get_widget_text_color() -> str:
-    """Get the current widget text color."""
-    return load_settings().get(
-        "widget_text_color", DEFAULT_SETTINGS["widget_text_color"]
-    )
-
-
-def set_widget_text_color(color: str) -> str:
-    """Set the widget text color and persist it."""
-    settings = load_settings()
-    settings["widget_text_color"] = color
-    save_settings(settings)
-    return color

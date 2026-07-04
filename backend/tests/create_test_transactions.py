@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.database import async_session_factory
-from app.models import Fund, Transaction
+from app.models import Fund, Transaction, Wallet
 from sqlalchemy import select
 
 PICONERO = Decimal("1e12")
@@ -46,10 +46,16 @@ async def seed(count: int, fund_id: str | None = None) -> None:
 
         if not fund:
             print(
-                "ERROR: No funds found in database. Run seed_test_data.py first.",
+                "ERROR: No funds found in database. Run create_test_fund.py first.",
                 file=sys.stderr,
             )
             sys.exit(1)
+
+        # Get the wallet for this fund
+        result = await session.execute(
+            select(Wallet).where(Wallet.id == fund.wallet_id)
+        )
+        wallet = result.scalar_one_or_none()
 
         now = datetime.now(timezone.utc)
         transactions = []
@@ -62,6 +68,7 @@ async def seed(count: int, fund_id: str | None = None) -> None:
             transactions.append(
                 Transaction(
                     fund_id=fund.id,
+                    wallet_id=wallet.id if wallet else fund.wallet_id,
                     txid=random_txid(),
                     amount_atomic=amount_atomic,
                     amount_xmr=amount_xmr,

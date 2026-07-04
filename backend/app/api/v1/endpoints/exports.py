@@ -165,9 +165,8 @@ async def export_transactions(
 
     dt_format = get_datetime_format()
 
-    # Deposit address
-    deposit_addr = fund.deposit_address or fund.primary_address
-
+    # Use deposit_address from the fund
+    deposit_addr = fund.deposit_address
     fund_id_str = str(fund_id)
 
     if export_format == "pdf":
@@ -175,7 +174,7 @@ async def export_transactions(
             fund_label=fund.label,
             fund_description=fund.description,
             deposit_address=deposit_addr,
-            wallet_height=fund.last_scanned_height,
+            wallet_height=None,
             transactions=tx_dicts,
             total_xmr=overall_total_xmr,
             target_xmr=str(fund.target_amount_xmr) if fund.target_amount_xmr else None,

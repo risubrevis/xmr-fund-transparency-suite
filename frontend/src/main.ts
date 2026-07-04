@@ -5,7 +5,9 @@ import App from "./App.vue";
 import Dashboard from "./pages/Dashboard.vue";
 import News from "./pages/News.vue";
 import Settings from "./pages/Settings.vue";
-import Widget from "./pages/Widget.vue";
+import Wallets from "./pages/Wallets.vue";
+import WalletDetail from "./pages/WalletDetail.vue";
+import FundDetail from "./pages/FundDetail.vue";
 import { useFundStore } from "./stores/fund";
 import { isApiKeySet } from "./lib/api";
 import "./assets/main.css";
@@ -14,6 +16,24 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: "/", name: "dashboard", component: Dashboard },
+    {
+      path: "/wallets",
+      name: "wallets",
+      component: Wallets,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/wallets/:uuid",
+      name: "wallet-detail",
+      component: WalletDetail,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/wallets/:walletUuid/funds/:fundUuid",
+      name: "fund-detail",
+      component: FundDetail,
+      meta: { requiresAuth: true },
+    },
     {
       path: "/news",
       name: "news",
@@ -24,12 +44,6 @@ const router = createRouter({
       path: "/settings",
       name: "settings",
       component: Settings,
-      meta: { requiresAuth: true },
-    },
-    {
-      path: "/widget",
-      name: "widget",
-      component: Widget,
       meta: { requiresAuth: true },
     },
   ],

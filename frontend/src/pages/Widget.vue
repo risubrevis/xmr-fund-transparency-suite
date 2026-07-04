@@ -41,9 +41,7 @@
         :fund-description="currentFund.description"
         :total-xmr="currentFund.stats?.total_received_xmr || '0.00'"
         :target-amount-xmr="currentFund.target_amount_xmr"
-        :deposit-address="
-          currentFund.deposit_address || currentFund.primary_address
-        "
+        :deposit-address="currentFund.deposit_address"
         :base-color="widgetColor"
         :text-color="textColor"
       />
@@ -53,7 +51,8 @@
         <div class="p-6 pb-4">
           <h3 class="text-lg font-semibold text-gray-900">Style Settings</h3>
           <p class="text-sm text-gray-600 mt-1">
-            Customize the appearance of the embedded widget.
+            Customize the appearance of the embedded widget. Colors are saved
+            per-fund.
           </p>
         </div>
 
@@ -100,16 +99,19 @@
 import { ref, computed, onMounted } from "vue";
 import { Code2, PlusCircle, RefreshCw, Loader2, Save } from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
-import { settingsApi } from "@/lib/api";
+import { fundsApi } from "@/lib/api";
 import WidgetPreview from "@/components/Widget/WidgetPreview.vue";
 import ColorPicker from "@/components/Widget/ColorPicker.vue";
 import { Button } from "@/components/ui/button";
 
+const DEFAULT_BG = "#667eea";
+const DEFAULT_TEXT = "#ffffff";
+
 const store = useFundStore();
 const currentFund = computed(() => store.currentFund);
 
-const widgetColor = ref("#667eea");
-const textColor = ref("#ffffff");
+const widgetColor = ref(DEFAULT_BG);
+const textColor = ref(DEFAULT_TEXT);
 const savingColor = ref(false);
 
 const textPresets = [
@@ -123,28 +125,24 @@ const textPresets = [
   "#f3e8ff",
 ];
 
-onMounted(async () => {
-  try {
-    const [colorRes, textColorRes] = await Promise.all([
-      settingsApi.getWidgetColor(),
-      settingsApi.getWidgetTextColor(),
-    ]);
-    widgetColor.value = colorRes.data.color;
-    textColor.value = textColorRes.data.color;
-  } catch {
-    // Use default colors if settings can't be loaded
+onMounted(() => {
+  // Initialize colors from the fund's stored values
+  if (currentFund.value) {
+    widgetColor.value = currentFund.value.widget_background_color || DEFAULT_BG;
+    textColor.value = currentFund.value.widget_text_color || DEFAULT_TEXT;
   }
 });
 
 async function saveColor() {
+  if (!currentFund.value) return;
   savingColor.value = true;
   try {
-    const [colorRes, textColorRes] = await Promise.all([
-      settingsApi.updateWidgetColor(widgetColor.value),
-      settingsApi.updateWidgetTextColor(textColor.value),
-    ]);
-    widgetColor.value = colorRes.data.color;
-    textColor.value = textColorRes.data.color;
+    await fundsApi.update(currentFund.value.id, {
+      widget_background_color: widgetColor.value,
+      widget_text_color: textColor.value,
+    });
+    // Refresh fund data to reflect the update
+    await store.fetchFund(currentFund.value.id);
   } catch {
     // Handle error silently
   } finally {

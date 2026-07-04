@@ -4,43 +4,16 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+# --- Wallet schemas ---
 
-class FundCreate(BaseModel):
-    """Request body for creating a new fund."""
 
-    label: str = Field(..., min_length=1, max_length=255)
-    description: str | None = Field(
-        None,
-        max_length=2048,
-        description="Optional fund description displayed in the public widget.",
-    )
+class WalletCreate(BaseModel):
+    """Request body for creating a new wallet."""
+
+    name: str = Field(..., min_length=1, max_length=255)
     primary_address: str = Field(..., min_length=95, max_length=95)
-    deposit_address: str | None = Field(
-        None,
-        min_length=95,
-        max_length=95,
-        description="Optional deposit address. Defaults to primary_address if not provided.",
-    )
     view_key: str = Field(..., min_length=64, max_length=64)
     start_height: int = Field(..., ge=0)
-    target_amount_xmr: Decimal | None = Field(
-        None,
-        description="Optional fundraising target in XMR",
-    )
-
-    @field_validator("target_amount_xmr")
-    @classmethod
-    def validate_target_amount_precision(cls, v: Decimal | None) -> Decimal | None:
-        if v is not None:
-            if v <= 0:
-                raise ValueError("Target amount must be greater than 0")
-            # XMR has at most 12 decimal places (piconero precision)
-            exponent = v.as_tuple().exponent
-            if isinstance(exponent, int) and -exponent > 12:
-                raise ValueError(
-                    "Target amount must not exceed 12 decimal places (XMR precision)"
-                )
-        return v
 
     @field_validator("view_key")
     @classmethod
@@ -60,20 +33,115 @@ class FundCreate(BaseModel):
             raise ValueError("Invalid Monero address format")
         return v
 
+
+class WalletUpdate(BaseModel):
+    """Request body for updating a wallet."""
+
+    name: str | None = Field(None, min_length=1, max_length=255)
+    is_active: bool | None = None
+
+
+class WalletResponse(BaseModel):
+    """Wallet data returned in API responses."""
+
+    id: uuid.UUID
+    uuid: str
+    name: str
+    primary_address: str
+    start_height: int
+    last_scan_at: datetime | None = None
+    last_scanned_height: int | None = None
+    scan_error: str | None = None
+    is_active: bool
+    created_at: datetime
+
+    @model_validator(mode="after")
+    def normalize_empty_strings(self) -> "WalletResponse":
+        if self.scan_error == "":
+            self.scan_error = None
+        return self
+
+    model_config = {"from_attributes": True}
+
+
+# --- Fund schemas ---
+
+
+class FundCreate(BaseModel):
+    """Request body for creating a new fund."""
+
+    wallet_id: uuid.UUID = Field(
+        ..., description="ID of the wallet this fund belongs to."
+    )
+    label: str = Field(..., min_length=1, max_length=255)
+    description: str | None = Field(
+        None,
+        max_length=2048,
+        description="Optional fund description displayed in the public widget.",
+    )
+    deposit_address: str = Field(
+        ...,
+        min_length=95,
+        max_length=95,
+        description="Deposit address for this fund. Must be unique across all funds.",
+    )
+    target_amount_xmr: Decimal | None = Field(
+        None,
+        description="Optional fundraising target in XMR",
+    )
+    widget_background_color: str | None = Field(
+        None,
+        pattern=r"^#[0-9a-fA-F]{6}$",
+        description="Optional hex color for widget background (e.g. #667eea).",
+    )
+    widget_text_color: str | None = Field(
+        None,
+        pattern=r"^#[0-9a-fA-F]{6}$",
+        description="Optional hex color for widget text (e.g. #ffffff).",
+    )
+    public_website: str | None = Field(
+        None,
+        max_length=255,
+        description="Public website URL for the fund (without https://, e.g. example.com).",
+    )
+
+    @field_validator("target_amount_xmr")
+    @classmethod
+    def validate_target_amount_precision(cls, v: Decimal | None) -> Decimal | None:
+        if v is not None:
+            if v <= 0:
+                raise ValueError("Target amount must be greater than 0")
+            exponent = v.as_tuple().exponent
+            if isinstance(exponent, int) and -exponent > 12:
+                raise ValueError(
+                    "Target amount must not exceed 12 decimal places (XMR precision)"
+                )
+        return v
+
     @field_validator("deposit_address")
     @classmethod
-    def validate_deposit_address_format(cls, v: str | None) -> str | None:
+    def validate_deposit_address_format(cls, v: str) -> str:
         import re
 
-        if v is not None and not re.match(r"^[48AB][1-9A-HJ-NP-Za-km-z]{94}$", v):
+        if not re.match(r"^[48AB][1-9A-HJ-NP-Za-km-z]{94}$", v):
             raise ValueError("Invalid Monero deposit address format")
         return v
 
-    @model_validator(mode="after")
-    def default_deposit_address(self) -> "FundCreate":
-        if self.deposit_address is None:
-            self.deposit_address = self.primary_address
-        return self
+    @field_validator("public_website")
+    @classmethod
+    def validate_public_website(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip()
+            # Strip leading https:// or http:// if user accidentally included it
+            if v.startswith("https://"):
+                v = v[len("https://") :]
+            elif v.startswith("http://"):
+                v = v[len("http://") :]
+            # Strip trailing slash
+            v = v.rstrip("/")
+            if not v:
+                return None
+        return v
 
 
 class FundUpdate(BaseModel):
@@ -96,6 +164,21 @@ class FundUpdate(BaseModel):
         max_length=95,
         description="Update the deposit address. Changing this will reset scan history and re-scan.",
     )
+    widget_background_color: str | None = Field(
+        None,
+        pattern=r"^#[0-9a-fA-F]{6}$",
+        description="Hex color for widget background (e.g. #667eea). Set to null to clear.",
+    )
+    widget_text_color: str | None = Field(
+        None,
+        pattern=r"^#[0-9a-fA-F]{6}$",
+        description="Hex color for widget text (e.g. #ffffff). Set to null to clear.",
+    )
+    public_website: str | None = Field(
+        None,
+        max_length=255,
+        description="Public website URL for the fund (without https://, e.g. example.com).",
+    )
 
     @field_validator("deposit_address")
     @classmethod
@@ -119,29 +202,36 @@ class FundUpdate(BaseModel):
                 )
         return v
 
+    @field_validator("public_website")
+    @classmethod
+    def validate_public_website(cls, v: str | None) -> str | None:
+        if v is not None:
+            v = v.strip()
+            if v.startswith("https://"):
+                v = v[len("https://") :]
+            elif v.startswith("http://"):
+                v = v[len("http://") :]
+            v = v.rstrip("/")
+            if not v:
+                return None
+        return v
+
 
 class FundResponse(BaseModel):
     """Fund data returned in API responses."""
 
     id: uuid.UUID
     public_uuid: str
+    wallet_id: uuid.UUID
     label: str
     description: str | None = None
-    primary_address: str
-    deposit_address: str | None = None
-    start_height: int
+    deposit_address: str
     is_active: bool
     target_amount_xmr: Decimal | None = None
-    last_scan_at: datetime | None = None
-    last_scanned_height: int | None = None
-    scan_error: str | None = None
+    widget_background_color: str | None = None
+    widget_text_color: str | None = None
+    public_website: str | None = None
     created_at: datetime
-
-    @model_validator(mode="after")
-    def normalize_empty_strings(self) -> "FundResponse":
-        if self.scan_error == "":
-            self.scan_error = None
-        return self
 
     model_config = {"from_attributes": True}
 
@@ -195,40 +285,24 @@ class DateTimeFormatResponse(BaseModel):
     pattern: str
 
 
-class WidgetColorUpdate(BaseModel):
-    """Request body for updating widget base color."""
-
-    color: str
-
-
-class WidgetColorResponse(BaseModel):
-    """Response for widget color setting."""
-
-    color: str
-
-
-class WidgetTextColorUpdate(BaseModel):
-    """Request body for updating widget text color."""
-
-    color: str
-
-
-class WidgetTextColorResponse(BaseModel):
-    """Response for widget text color setting."""
-
-    color: str
-
-
 class PostCreate(BaseModel):
     """Request body for creating a new post."""
 
     body: str = Field(..., min_length=1, max_length=2048)
+    fund_id: uuid.UUID | None = Field(
+        None,
+        description="Fund ID to link the post to. If not provided, fund_id query param is used.",
+    )
 
 
 class PostUpdate(BaseModel):
     """Request body for updating a post."""
 
-    body: str = Field(..., min_length=1, max_length=2048)
+    body: str | None = Field(None, min_length=1, max_length=2048)
+    fund_id: uuid.UUID | None = Field(
+        None,
+        description="Move post to a different fund. Also updates wallet_id accordingly.",
+    )
 
 
 class PostResponse(BaseModel):
@@ -236,7 +310,10 @@ class PostResponse(BaseModel):
 
     id: uuid.UUID
     fund_id: uuid.UUID
+    wallet_id: uuid.UUID
     body: str
+    fund_label: str | None = None
+    wallet_name: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
 

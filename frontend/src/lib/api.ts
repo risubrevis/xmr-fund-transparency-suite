@@ -41,14 +41,14 @@ export function isApiKeySet(): boolean {
 // Validate API key by calling an authenticated endpoint
 export async function validateApiKey(key: string): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE}/api/v1/funds`, {
+    const response = await fetch(`${API_BASE}/api/v1/wallets`, {
       headers: {
         "X-API-Key": key,
         "Content-Type": "application/json",
       },
     });
     // 200 = valid key, 401 = invalid key
-    // 404 would mean valid key but no funds yet — also valid
+    // 404 would mean valid key but no wallets yet — also valid
     if (response.ok || response.status === 404) {
       return true;
     }
@@ -58,20 +58,33 @@ export async function validateApiKey(key: string): Promise<boolean> {
   }
 }
 
-// Fund API
-export interface Fund {
+// Wallet interface
+export interface Wallet {
   id: string;
-  public_uuid: string;
-  label: string;
-  description: string | null;
+  uuid: string;
+  name: string;
   primary_address: string;
-  deposit_address: string | null;
   start_height: number;
-  is_active: boolean;
-  target_amount_xmr: string | null;
   last_scan_at: string | null;
   last_scanned_height: number | null;
   scan_error: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
+// Fund interface
+export interface Fund {
+  id: string;
+  public_uuid: string;
+  wallet_id: string;
+  label: string;
+  description: string | null;
+  deposit_address: string;
+  is_active: boolean;
+  target_amount_xmr: string | null;
+  widget_background_color: string | null;
+  widget_text_color: string | null;
+  public_website: string | null;
   created_at: string;
   stats?: {
     total_received_xmr: string;
@@ -97,17 +110,40 @@ export interface TransactionListResponse {
   has_more: boolean;
 }
 
-export const fundsApi = {
-  list: () => api.get<Fund[]>("/api/v1/funds"),
+// Wallet API
+export const walletsApi = {
+  list: () => api.get<Wallet[]>("/api/v1/wallets"),
 
   create: (data: {
-    label: string;
-    description?: string | null;
+    name: string;
     primary_address: string;
-    deposit_address?: string | null;
     view_key: string;
     start_height: number;
+  }) => api.post<Wallet>("/api/v1/wallets", data),
+
+  get: (id: string) => api.get<Wallet>(`/api/v1/wallets/${id}`),
+
+  update: (id: string, data: { name?: string; is_active?: boolean }) =>
+    api.patch<Wallet>(`/api/v1/wallets/${id}`, data),
+
+  delete: (id: string) => api.delete(`/api/v1/wallets/${id}`),
+};
+
+export const fundsApi = {
+  list: (walletId?: string) => {
+    const params = walletId ? { wallet_id: walletId } : {};
+    return api.get<Fund[]>("/api/v1/funds", { params });
+  },
+
+  create: (data: {
+    wallet_id: string;
+    label: string;
+    description?: string | null;
+    deposit_address: string;
     target_amount_xmr?: string | null;
+    widget_background_color?: string | null;
+    widget_text_color?: string | null;
+    public_website?: string | null;
   }) => api.post<Fund>("/api/v1/funds", data),
 
   get: (id: string) => api.get<Fund>(`/api/v1/funds/${id}`),
@@ -122,6 +158,9 @@ export const fundsApi = {
       is_active?: boolean;
       target_amount_xmr?: string | null;
       deposit_address?: string | null;
+      widget_background_color?: string | null;
+      widget_text_color?: string | null;
+      public_website?: string | null;
     },
   ) => api.patch<Fund>(`/api/v1/funds/${id}`, data),
 
@@ -228,18 +267,6 @@ export const settingsApi = {
 
   updateDatetimeFormat: (pattern: string) =>
     api.put("/api/v1/settings/datetime-format", { pattern }),
-
-  getWidgetColor: () =>
-    api.get<{ color: string }>("/api/v1/settings/widget-color"),
-
-  updateWidgetColor: (color: string) =>
-    api.put<{ color: string }>("/api/v1/settings/widget-color", { color }),
-
-  getWidgetTextColor: () =>
-    api.get<{ color: string }>("/api/v1/settings/widget-text-color"),
-
-  updateWidgetTextColor: (color: string) =>
-    api.put<{ color: string }>("/api/v1/settings/widget-text-color", { color }),
 };
 
 /**
@@ -257,17 +284,26 @@ export function publicWidgetExportUrl(
 export interface Post {
   id: string;
   fund_id: string;
+  wallet_id: string;
   body: string;
+  fund_label: string | null;
+  wallet_name: string | null;
   created_at: string;
   updated_at: string | null;
 }
 
 export const postsApi = {
-  list: () => api.get<Post[]>("/api/v1/posts"),
+  list: (params?: {
+    fund_id?: string;
+    wallet_id?: string;
+    start_date?: string;
+    end_date?: string;
+  }) => api.get<Post[]>("/api/v1/posts", { params }),
 
-  create: (data: { body: string }) => api.post<Post>("/api/v1/posts", data),
+  create: (data: { body: string; fund_id?: string }, fundId: string) =>
+    api.post<Post>(`/api/v1/posts?fund_id=${encodeURIComponent(fundId)}`, data),
 
-  update: (id: string, data: { body: string }) =>
+  update: (id: string, data: { body?: string; fund_id?: string }) =>
     api.patch<Post>(`/api/v1/posts/${id}`, data),
 
   delete: (id: string) => api.delete(`/api/v1/posts/${id}`),

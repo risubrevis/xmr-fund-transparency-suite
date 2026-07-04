@@ -42,14 +42,14 @@ async def get_pdf_report(
     transactions = tx_result.scalars().all()
 
     total_xmr = sum(tx.amount_xmr for tx in transactions)
-    deposit_addr = fund.deposit_address or fund.primary_address
+    deposit_addr = fund.deposit_address
     dt_format = get_datetime_format()
 
     pdf_data = generate_pdf_report(
         fund_label=fund.label,
         fund_description=fund.description,
         deposit_address=deposit_addr,
-        wallet_height=fund.last_scanned_height,
+        wallet_height=None,
         transactions=[
             {
                 "txid": tx.txid,
@@ -95,7 +95,7 @@ async def get_xml_report(
     transactions = tx_result.scalars().all()
 
     total_xmr = sum(tx.amount_xmr for tx in transactions)
-    deposit_addr = fund.deposit_address or fund.primary_address
+    deposit_addr = fund.deposit_address
     dt_format = get_datetime_format()
 
     xml_data = generate_xml_report(

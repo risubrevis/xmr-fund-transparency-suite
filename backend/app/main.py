@@ -60,10 +60,12 @@ def create_app() -> FastAPI:
         posts,
         reports,
         transactions,
+        wallets,
         widget,
     )
     from app.api.v1.endpoints import settings as settings_mod
 
+    app.include_router(wallets.router, prefix="/api/v1")
     app.include_router(funds.router, prefix="/api/v1")
     app.include_router(transactions.router, prefix="/api/v1")
     app.include_router(reports.router, prefix="/api/v1")
