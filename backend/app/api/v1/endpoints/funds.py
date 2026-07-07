@@ -350,10 +350,6 @@ async def download_widget_png(
     if not fund:
         raise HTTPException(status_code=404, detail="Fund not found")
 
-    # Fetch wallet for colors fallback
-    wallet_result = await db.execute(select(Wallet).where(Wallet.id == fund.wallet_id))
-    wallet = wallet_result.scalar_one_or_none()
-
     # Calculate total received
     total_result = await db.execute(
         select(func.coalesce(func.sum(Transaction.amount_xmr), 0)).where(
@@ -380,7 +376,6 @@ async def download_widget_png(
         format_type=format,
     )
 
-    fmt_info = FORMATS[format]
     filename = f"{fund.label.replace(' ', '_')}_{format}.png"
 
     return Response(

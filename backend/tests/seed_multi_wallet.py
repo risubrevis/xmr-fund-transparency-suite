@@ -210,7 +210,7 @@ async def seed(count_per_fund: int = 50) -> None:
         result = await session.execute(select(Fund))
         all_funds = result.scalars().all()
 
-        print(f"\n--- Summary ---")
+        print("\n--- Summary ---")
         print(f"Wallets: {len(all_wallets)}")
         print(f"Funds:   {len(all_funds)}")
         for w in all_wallets:

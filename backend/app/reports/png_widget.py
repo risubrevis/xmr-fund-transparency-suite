@@ -1,7 +1,6 @@
 """Generate widget PNG images in multiple formats (business card, wide, vertical)."""
 
 import io
-import math
 from typing import Literal
 
 import qrcode
@@ -47,30 +46,30 @@ def hex_to_hsl(hex_color: str) -> tuple[float, float, float]:
     b /= 255
     max_c = max(r, g, b)
     min_c = min(r, g, b)
-    l = (max_c + min_c) / 2
+    lightness = (max_c + min_c) / 2
     if max_c == min_c:
         h = 0.0
         s = 0.0
     else:
         d = max_c - min_c
-        s = d / (2 - max_c - min_c) if l > 0.5 else d / (max_c + min_c)
+        s = d / (2 - max_c - min_c) if lightness > 0.5 else d / (max_c + min_c)
         if max_c == r:
             h = ((g - b) / d + (6 if g < b else 0)) / 6
         elif max_c == g:
             h = ((b - r) / d + 2) / 6
         else:
             h = ((r - g) / d + 4) / 6
-    return (h * 360, s * 100, l * 100)
+    return (h * 360, s * 100, lightness * 100)
 
 
-def hsl_to_rgb(h: float, s: float, l: float) -> tuple[int, int, int]:
+def hsl_to_rgb(h: float, s: float, lightness: float) -> tuple[int, int, int]:
     """Convert HSL to RGB tuple."""
     h = ((h % 360) + 360) % 360
     s /= 100
-    l /= 100
-    c = (1 - abs(2 * l - 1)) * s
+    lightness /= 100
+    c = (1 - abs(2 * lightness - 1)) * s
     x = c * (1 - abs((h / 60) % 2 - 1))
-    m = l - c / 2
+    m = lightness - c / 2
     if h < 60:
         r, g, b = c, x, 0
     elif h < 120:
@@ -196,8 +195,8 @@ def generate_widget_png(
     height = mm_to_px(fmt["height_mm"])
 
     # Gradient colors (same logic as JS widget: +40 hue shift)
-    h, s, l = hex_to_hsl(base_color)
-    end_color_hex = "#{:02x}{:02x}{:02x}".format(*hsl_to_rgb(h + 40, s, l))
+    h, s, lightness = hex_to_hsl(base_color)
+    end_color_hex = "#{:02x}{:02x}{:02x}".format(*hsl_to_rgb(h + 40, s, lightness))
     text_rgb = hex_to_rgb(text_color)
 
     # Padding
