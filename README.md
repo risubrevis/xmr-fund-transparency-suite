@@ -240,6 +240,8 @@ cd xmr-fund-transparency-suite
 ./scripts/setup.sh
 ```
 
+This launches the **default production instance**. To deploy an isolated demo or staging instance alongside production, see [Multi-Instance Deployment](#multi-instance-deployment) below.
+
 On the first run, the script will:
 
 1. Auto-generate an `.env` file from `.env.example`
@@ -280,6 +282,8 @@ Mounts the backend and worker code into the containers with `uvicorn --reload` a
 ./scripts/setup.sh --stop   # Stop all containers
 ./scripts/setup.sh --clean  # Stop and DELETE all persistent data (interactive confirmation required)
 ./scripts/setup.sh --init   # Prepare directories only, do not start containers
+./scripts/setup.sh --instance=demo   # Deploy as the demo instance (shifted ports)
+./scripts/setup.sh --instance=staging # Deploy as the staging instance
 ```
 
 ---
@@ -361,6 +365,78 @@ server {
 ```
 
 > **Recommendation:** For production, terminate TLS with a valid SSL certificate (for example, via Let's Encrypt / Certbot) and redirect HTTP to HTTPS.
+
+---
+
+## Multi-Instance Deployment
+
+Multiple isolated instances (production, demo, staging, etc.) can run on the **same host** without port or container-name collisions. Each instance lives in its own directory with its own `.env`, Docker Compose project name, host ports, and data volumes.
+
+### How It Works
+
+The `--instance=NAME` flag tells `setup.sh` to generate a `.env` with a unique `COMPOSE_PROJECT_NAME` and a preset of non-overlapping host ports:
+
+| Instance | Project name | Frontend | Backend | Postgres | Redis | Monero RPC | APP_URL | Environment |
+|----------|-------------|----------|---------|----------|-------|------------|---------|-------------|
+| `prod` (default) | `xmrfts-prod` | 3000 | 8000 | 5432 | 6379 | 18082 | `dashboard.xmrfts.com` | production |
+| `demo` | `xmrfts-demo` | 3001 | 8001 | 5433 | 6380 | 18083 | `demo.xmrfts.com` | production |
+| `staging` | `xmrfts-staging` | 3002 | 8002 | 5434 | 6381 | 18084 | `staging.xmrfts.com` | staging |
+| custom | `xmrfts-{name}` | 3000 | 8000 | 5432 | 6379 | 18082 | `localhost` | production |
+
+For custom instance names, prod port defaults are used and the script prints a warning — edit `.env` to set unique host ports before starting alongside other instances.
+
+### Isolation Guarantees
+
+| Resource | Mechanism |
+|----------|----------|
+| **Container names** | `COMPOSE_PROJECT_NAME` prefix — each instance gets unique names (`xmrfts-prod-backend-1` vs `xmrfts-demo-backend-1`) |
+| **Docker networks** | Compose creates a separate bridge network per project — no cross-talk by service name |
+| **Host ports** | `FRONTEND_PORT`, `BACKEND_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `MONERO_RPC_PORT` — each instance uses a unique set |
+| **Data volumes** | Bind-mounts (`./postgres`, `./redis`, `./monero-wallet-rpc`, `./data`) are relative to each instance directory |
+| **Secrets** | Each instance has its own `.env` with independently generated `DB_PASSWORD`, `API_KEY`, `VIEW_KEY_MASTER_SECRET` |
+| **Database** | Each instance runs its own PostgreSQL container with a separate data directory |
+| **Git state** | Each instance is a separate clone — `update.sh` updates or rolls back each independently |
+
+### Example: Production + Demo on One Server
+
+```bash
+# ── Production (ports 3000 / 8000) ──────────────────────────────────────────
+git clone https://github.com/risubrevis/xmr-fund-transparency-suite.git \
+    /home/user/dashboard.xmrfts.com
+cd /home/user/dashboard.xmrfts.com
+./scripts/setup.sh
+#   → .env: COMPOSE_PROJECT_NAME=xmrfts-prod, ports 3000/8000/5432/6379/18082
+
+# ── Demo (ports 3001 / 8001) ────────────────────────────────────────────────
+git clone https://github.com/risubrevis/xmr-fund-transparency-suite.git \
+    /home/user/demo.xmrfts.com
+cd /home/user/demo.xmrfts.com
+./scripts/setup.sh --instance=demo
+#   → .env: COMPOSE_PROJECT_NAME=xmrfts-demo, ports 3001/8001/5433/6380/18083
+```
+
+Each instance must be in its own directory with its own git clone.
+
+### Updating a Specific Instance
+
+`update.sh` reads `COMPOSE_PROJECT_NAME` and `BACKEND_PORT` from `.env`, so it automatically targets the correct instance:
+
+```bash
+cd /home/user/demo.xmrfts.com
+./scripts/update.sh --instance=demo
+```
+
+### Nginx for Multiple Instances
+
+Each instance needs its own nginx `server` block pointing to its host ports. Production-grade configs with TLS 1.3, security headers, SSE support, and separate rate-limit zones are provided in the [docs repository](https://github.com/risubrevis/xmr-fund-transparency-suite-docs):
+
+| Domain | Frontend | Backend | Config file |
+|--------|----------|--------|-------------|
+| `dashboard.xmrfts.com` | `127.0.0.1:3000` | `127.0.0.1:8000` | `dashboard.xmrfts.com.nginx.conf` |
+| `demo.xmrfts.com` | `127.0.0.1:3001` | `127.0.0.1:8001` | `demo.xmrfts.com.nginx.conf` |
+| `staging.xmrfts.com` | `127.0.0.1:3002` | `127.0.0.1:8002` | *(create by analogy)* |
+
+Demo uses separate rate-limit zones (`api_limit_demo`, `sse_limit_demo`, `export_limit_demo`) so its traffic cannot exhaust the production rate-limit buckets. These zones must be added to `/etc/nginx/conf.d/rate_limiting.conf` (see `rate_limiting.nginx..conf` in the docs repo).
 
 ---
 
@@ -452,6 +528,12 @@ All configuration is injected via the `.env` file:
 | `LOG_FORMAT` | `json` | `json` or `console` |
 | `ENVIRONMENT` | `local` | `local` / `staging` / `production` |
 | `APP_URL` | `localhost` | Used for CORS and widget origin |
+| `COMPOSE_PROJECT_NAME` | `xmrfts-prod` | Docker Compose project name — instance isolation (see [Multi-Instance Deployment](#multi-instance-deployment)) |
+| `FRONTEND_PORT` | `3000` | Host port for the frontend container |
+| `BACKEND_PORT` | `8000` | Host port for the backend container |
+| `POSTGRES_PORT` | `5432` | Host port for PostgreSQL |
+| `REDIS_PORT` | `6379` | Host port for Redis |
+| `MONERO_RPC_PORT` | `18082` | Host port for `monero-wallet-rpc` |
 | `CORS_ORIGINS` | *(empty)* | Additional comma-separated CORS origins |
 | `SENTRY_DSN` | *(empty)* | Optional Sentry error tracking DSN |
 

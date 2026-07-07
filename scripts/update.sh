@@ -87,6 +87,27 @@ check_env() {
     fi
 }
 
+# ── Load instance config from .env ───────────────────────────────────────────
+# Reads COMPOSE_PROJECT_NAME and BACKEND_PORT from .env so the update
+# targets the correct Docker Compose project and health-checks the right port.
+load_env_config() {
+    COMPOSE_PROJECT_NAME=$(grep -E "^COMPOSE_PROJECT_NAME=" .env 2>/dev/null | head -1 | cut -d= -f2- || echo "")
+    BACKEND_PORT=$(grep -E "^BACKEND_PORT=" .env 2>/dev/null | head -1 | cut -d= -f2- || echo "8000")
+    APP_URL=$(grep -E "^APP_URL=" .env 2>/dev/null | head -1 | cut -d= -f2- || echo "localhost")
+
+    if [[ -z "$COMPOSE_PROJECT_NAME" ]]; then
+        # .env predates multi-instance support — derive project name from directory
+        COMPOSE_PROJECT_NAME=$(basename "$(pwd)")
+        COMPOSE_PROJECT_NAME=$(echo "$COMPOSE_PROJECT_NAME" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9_-]//g')
+    fi
+
+    export COMPOSE_PROJECT_NAME
+
+    if [[ -n "$INSTANCE" ]]; then
+        info "Instance: $INSTANCE  (project: $COMPOSE_PROJECT_NAME, backend port: $BACKEND_PORT)"
+    fi
+}
+
 # ── Database backup ──────────────────────────────────────────────────────────
 backup_database() {
     local backup_dir="backups"
@@ -273,8 +294,9 @@ do_update() {
     info "Waiting for backend to start (migrations run automatically)..."
     local retries=30
     local started=false
+    local health_port="${BACKEND_PORT:-8000}"
     while [[ $retries -gt 0 ]]; do
-        if curl -sf http://localhost:8000/health >/dev/null 2>&1; then
+        if curl -sf "http://localhost:${health_port}/health" >/dev/null 2>&1; then
             started=true
             break
         fi
@@ -308,7 +330,7 @@ do_update() {
     ok "Update complete! Running version: $target_version"
     echo ""
     info "Dashboard:   http${APP_URL:+s}://${APP_URL:-localhost}"
-    info "Backend API: http${APP_URL:+s}://${APP_URL:-localhost}:8000/docs"
+    info "Backend API: http${APP_URL:+s}://${APP_URL:-localhost}:${BACKEND_PORT:-8000}/docs"
     info "View logs:   $COMPOSE_CMD logs -f"
     info "Rollback:     ./scripts/update.sh --rollback"
     echo ""
@@ -319,12 +341,14 @@ do_update() {
 # ── Parse arguments ──────────────────────────────────────────────────────────
 TARGET_VERSION=""
 ACTION=""
+INSTANCE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --check)   ACTION=check; shift ;;
         --rollback) ACTION=rollback; shift ;;
         --list)    ACTION=list; shift ;;
+        --instance=*) INSTANCE="${1#*=}"; shift ;;
         -h|--help)
             cat <<HELP
 XMR Fund Transparency Suite — update script.
@@ -335,6 +359,7 @@ Usage:
   $(basename "$0") --check      # Check for available updates
   $(basename "$0") --rollback    # Roll back to previous version
   $(basename "$0") --list        # List available release versions
+  $(basename "$0") --instance=NAME  # Specify instance (reads .env)
   $(basename "$0") -h            # Show this help
 
 The script will:
@@ -358,6 +383,7 @@ check_prerequisites
 case "${ACTION:-update}" in
     check)
         check_env
+        load_env_config
         check_for_updates
         ;;
     list)
@@ -365,10 +391,12 @@ case "${ACTION:-update}" in
         ;;
     rollback)
         check_env
+        load_env_config
         do_rollback
         ;;
     update)
         check_env
+        load_env_config
         do_update "$TARGET_VERSION"
         ;;
 esac
