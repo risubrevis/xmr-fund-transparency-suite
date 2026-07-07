@@ -8,7 +8,8 @@ from jinja2 import Template
 
 from app.validators import format_datetime
 
-PDF_TEMPLATE = Template("""<!DOCTYPE html>
+PDF_TEMPLATE = Template(
+    """<!DOCTYPE html>
 <html>
 <head>
     <style>
@@ -201,7 +202,8 @@ PDF_TEMPLATE = Template("""<!DOCTYPE html>
     </div>
 </body>
 </html>
-""")
+"""
+)
 
 
 def generate_pdf_report(

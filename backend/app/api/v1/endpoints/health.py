@@ -95,9 +95,9 @@ async def healthcheck(db: AsyncSession = Depends(get_db)) -> dict:
             {
                 "wallet_id": str(wallet.id),
                 "name": wallet.name,
-                "last_scan_at": wallet.last_scan_at.isoformat()
-                if wallet.last_scan_at
-                else None,
+                "last_scan_at": (
+                    wallet.last_scan_at.isoformat() if wallet.last_scan_at else None
+                ),
                 "last_scanned_height": wallet.last_scanned_height,
                 "scan_error": wallet.scan_error,
             }

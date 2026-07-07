@@ -367,9 +367,9 @@ async def download_widget_png(
         description=fund.description,
         public_website=fund.public_website,
         deposit_address=fund.deposit_address,
-        target_amount_xmr=str(fund.target_amount_xmr)
-        if fund.target_amount_xmr
-        else None,
+        target_amount_xmr=(
+            str(fund.target_amount_xmr) if fund.target_amount_xmr else None
+        ),
         total_received_xmr=f"{total_xmr:.4f}",
         base_color=base_color,
         text_color=text_color,

@@ -592,9 +592,11 @@ async def get_widget_json(
         "deposit_address": deposit_addr,
         "qr_code": qr_data_url,
         "total_received_xmr": f"{total_xmr:.2f}",
-        "target_amount_xmr": f"{fund.target_amount_xmr:.2f}"
-        if fund.target_amount_xmr is not None
-        else None,
+        "target_amount_xmr": (
+            f"{fund.target_amount_xmr:.2f}"
+            if fund.target_amount_xmr is not None
+            else None
+        ),
         "transaction_count": tx_count,
         "post_count": post_count,
         "fresh_posts_count": fresh_posts_count,

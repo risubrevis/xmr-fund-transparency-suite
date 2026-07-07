@@ -29,9 +29,9 @@ async def event_generator(wallet_id: uuid.UUID, api_key: str):
                 status = {
                     "type": "status",
                     "last_scanned_height": wallet.last_scanned_height,
-                    "last_scan_at": wallet.last_scan_at.isoformat()
-                    if wallet.last_scan_at
-                    else None,
+                    "last_scan_at": (
+                        wallet.last_scan_at.isoformat() if wallet.last_scan_at else None
+                    ),
                     "scan_error": wallet.scan_error,
                 }
                 yield f"event: status\ndata: {json.dumps(status)}\n\n"
