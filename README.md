@@ -19,6 +19,18 @@ The official landing page and live tracking demonstration of this project is run
 
 You can visit the live platform to inspect the open-source analytics integration, view deployment use-cases, and test the embeddable public donation widget running on top of a live Monero node.
 
+### 🧪 Live Demo Application
+
+A separate, isolated demo instance is available at **[demo.xmrfts.com](https://demo.xmrfts.com)** so you can try the full admin dashboard (wallet management, fund creation, charts, exports, and widget settings).
+
+To log in to the demo dashboard, use the API key:
+
+```
+OUR_SECRET_KEY_PASSWORD_FOR_DEMO
+```
+
+> **Note:** This is a shared demo key intended for public trial access only. The demo instance is reset periodically, so any funds, transactions, or settings you create may be removed.
+
 ---
 
 ## ⚡ The Challenge: Crowdfunding in Pure Privacy
@@ -141,403 +153,65 @@ The admin dashboard provides real-time analytics, transaction filtering, multi-f
 
 ## Project Architecture
 
-```text
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│   Browser   │<────>│   FastAPI    │<────>│ PostgreSQL  │
-│             │      │   Backend    │      │   Database  │
-└─────────────┘      └──────┬───────┘      └─────────────┘
-                            │
-              ┌─────────────┼──────────────┐
-              ▼             ▼               ▼
-     ┌──────────────┐ ┌─────────┐  ┌──────────────┐
-     │ monero-wallet│ │  Redis  │  │   Worker     │
-     │     rpc      │ │ (SSE)   │  │  (scanner)   │
-     └──────────────┘ └─────────┘  └──────────────┘
-```
+XMR FTS is composed of six services — FastAPI backend, Vue 3 frontend, PostgreSQL, Redis, `monero-wallet-rpc`, and a background scanner worker — orchestrated by Docker Compose. One wallet can hold multiple funds, each with its own deposit sub-address.
 
-| Service | Role |
-|---------|------|
-| `postgres` | Stores `Wallet`, `Fund`, `Transaction`, `Post`, and runtime settings |
-| `redis` | Pub/Sub broker for SSE real-time updates |
-| `monero-wallet-rpc` | View-only RPC wallet supporting multiple wallets (`--wallet-dir`) |
-| `backend` | FastAPI app — REST API, auth, reports, widget endpoints |
-| `worker` | Background blockchain scanner (`python -m worker.scanner`) — scans all active wallets |
-| `frontend` | Vue 3 SPA built with Vite; served by nginx |
-
-### Data Model
-
-```text
-Wallet 1 ──┬── Fund A (deposit_address: 8abc…) ──┬── Transaction 1
-           │                                       └── Transaction 2
-           ├── Fund B (deposit_address: 8def…) ──┬── Transaction 3
-           │                                       └── Post 1
-           └── Fund C (deposit_address: 8ghi…) ──── Post 2
-
-Wallet 2 ──── Fund D (deposit_address: 8jkl…) ── Transaction 4
-```
-
-- One **Wallet** holds the view key and represents a Monero view-only wallet on `monero-wallet-rpc`.
-- Each **Fund** has a unique `deposit_address` (typically a sub-address) and belongs to one wallet.
-- **Transactions** and **Posts** are linked to both a fund and a wallet (with cascade delete).
-
-### Directory Structure
-
-```text
-xmr-fund-transparency-suite/
-├── backend/                    # FastAPI Application
-│   ├── app/
-│   │   ├── api/v1/endpoints/   # REST routes (wallets, funds, transactions, posts, exports, widget, events)
-│   │   ├── reports/            # Report generators (pdf.py, xlsx.py, csv_export.py, xml.py, json_export.py, png_widget.py)
-│   │   ├── models.py           # SQLAlchemy 2.0 models (Wallet, Fund, Transaction, Post)
-│   │   ├── schemas.py          # Pydantic v2 schemas (WalletCreate, FundCreate, PostCreate, etc.)
-│   │   ├── crypto.py           # Fernet AES-256 view-key encryption
-│   │   ├── filters.py          # Shared transaction filter/sort logic
-│   │   ├── rpc_client.py       # monero-wallet-rpc helpers (multi-wallet: create, open, get_transfers, close)
-│   │   ├── settings.py          # JSON-file runtime settings
-│   │   ├── validators.py       # Datetime format & color validation
-│   │   └── auth.py              # API key middleware
-│   ├── worker/
-│   │   └── scanner.py          # Async background blockchain scanner (multi-wallet)
-│   ├── tests/                  # pytest suite (auth, crypto, reports, scanner)
-│   └── Dockerfile              # Includes pango/cairo deps for WeasyPrint
-├── frontend/                   # Vue 3 + Vite + TailwindCSS + Chart.js
-│   └── src/
-│       ├── pages/              # Dashboard, Wallets, WalletDetail, FundDetail, News, Settings
-│       ├── components/         # Charts, Filters, FundCard, WidgetPreview, ColorPicker
-│       ├── composables/        # useFund, useSSE, useDatetimeFormat, useChartPreferences, useTransactionFilters
-│       └── stores/
-│           └── fund.ts         # Pinia store (API key, wallets, funds, auth, SSE)
-├── scripts/
-│   ├── setup.sh                # One-command deploy / dev / stop / clean
-│   ├── update.sh               # Release-based updates with backups and rollback
-│   └── test-data.sh            # Seed demo transactions (use --multi for multi-wallet)
-├── docker-compose.yml          # Unified compose (prod + dev via env override)
-├── .env.example                # All configurable environment variables
-└── data/
-    └── settings.json           # Runtime settings (datetime format)
-```
+➡️ **Full details:** [docs/architecture.md](docs/architecture.md) — service roles, data model, and directory structure.
 
 ---
 
 ## Quick Start & Deployment
 
-### Prerequisites
+Get a production instance running in four steps — clone, run `setup.sh`, verify `.env`, and open the dashboard. A hot-reload `--dev` mode is also available.
 
-- [Docker](https://docs.docker.com/engine/install/) & [Docker Compose](https://docs.docker.com/compose/install/)
-- `openssl` (available on virtually all Linux distributions)
-- A Monero wallet with its **private view key** and **primary address**
-
-### Step 1: Clone the Repository
-
-```bash
-git clone https://github.com/risubrevis/xmr-fund-transparency-suite.git
-cd xmr-fund-transparency-suite
-```
-
-### Step 2: Run the Setup Script
-
-```bash
-./scripts/setup.sh
-```
-
-This launches the **default production instance**. To deploy an isolated demo or staging instance alongside production, see [Multi-Instance Deployment](#multi-instance-deployment) below.
-
-On the first run, the script will:
-
-1. Auto-generate an `.env` file from `.env.example`
-2. Create secure random values for `DB_PASSWORD`, `API_KEY`, and `VIEW_KEY_MASTER_SECRET`
-3. Create persistent data directories (`postgres/`, `redis/`, `monero-wallet-rpc/`, `data/`)
-4. Start all containers in detached production mode
-
-After completion, the terminal will display your generated **API Key** — save it immediately, as it will not be shown again.
-
-### Step 3: Review Critical Environment Variables
-
-Open `.env` and verify at least these two fields before exposing the instance to the internet:
-
-```bash
-ENVIRONMENT=local     # Change to 'production' for live servers
-APP_URL=localhost       # Change to your domain (e.g., dashboard.example.com)
-```
-
-### Step 4: Open the Dashboard
-
-Navigate to `http://localhost:3000` and log in with your API key. From the dashboard you can:
-
-1. **Create a wallet** — provide your Monero primary address and private view key
-2. **Create funds** — each fund has its own deposit sub-address and fundraising target
-3. **Customize widget** — each fund has its own colors, description, and public website
-
-### Development Mode (Hot Reload)
-
-```bash
-./scripts/setup.sh --dev
-```
-
-Mounts the backend and worker code into the containers with `uvicorn --reload` and `watchfiles` for instant feedback.
-
-### Other Setup Commands
-
-```bash
-./scripts/setup.sh --stop   # Stop all containers
-./scripts/setup.sh --clean  # Stop and DELETE all persistent data (interactive confirmation required)
-./scripts/setup.sh --init   # Prepare directories only, do not start containers
-./scripts/setup.sh --instance=demo   # Deploy as the demo instance (shifted ports)
-./scripts/setup.sh --instance=staging # Deploy as the staging instance
-```
+➡️ **Full guide:** [docs/quick-start.md](docs/quick-start.md)
 
 ---
 
 ## Generating Test Data
 
-To see charts and tables in action before real donations arrive, seed the database with demo transactions:
+Seed the database with demo transactions to see charts and tables in action before real donations arrive. Run `./scripts/test-data.sh --count=150` (or `--multi` for a multi-wallet dataset).
 
-```bash
-# Generate 150 random transactions for a test fund
-./scripts/test-data.sh --count=150
-
-# Use with the dev environment
-./scripts/test-data.sh --dev --count=100
-
-# Seed multi-wallet demo data (3 wallets × 2 funds + transactions)
-./scripts/test-data.sh --multi
-```
-
-The script creates a test fund if none exists and appends new rows on every run — existing data is never deleted.
+➡️ **Full guide:** [docs/test-data.md](docs/test-data.md)
 
 ---
 
 ## Updates & Rollbacks
 
-The `update.sh` script handles zero-downtime updates with automatic database backups.
+The `update.sh` script handles zero-downtime updates with automatic PostgreSQL backups (`backups/*.sql.gz`, last 5 retained), GitHub release tag checkout, container rebuilds, and rollback via `.deploy-version`.
 
-```bash
-# Update to the latest release tag
-./scripts/update.sh
-
-# Update to a specific version
-./scripts/update.sh v0.2.0
-
-# Check for available updates without applying
-./scripts/update.sh --check
-
-# List all available release versions
-./scripts/update.sh --list
-
-# Roll back to the previously deployed version
-./scripts/update.sh --rollback
-```
-
-**What the script does:**
-
-1. Creates a compressed PostgreSQL backup (`backups/*.sql.gz`, last 5 retained)
-2. Fetches release tags from GitHub
-3. Checks out the target version
-4. Rebuilds and restarts Docker containers
-5. Waits for the backend health check (Alembic migrations run automatically in `entrypoint.sh`)
-6. Records the deployed version in `.deploy-version` for future rollback
+➡️ **Full guide:** [docs/updates.md](docs/updates.md)
 
 ---
 
 ## Production Reverse Proxy Example
 
-Below is a minimal Nginx `server` block that proxies traffic to the frontend container. It preserves the original host, forwards real client IPs, and supports WebSocket upgrades for Vite HMR in dev mode and SSE connections.
+A minimal Nginx `server` block that proxies traffic to the frontend container with WebSocket/SSE support, plus a recommendation to terminate TLS via Let's Encrypt. Production-grade configs live in the docs repository.
 
-```nginx
-server {
-    listen 80;
-    listen [::]:80;
-    server_name dashboard.xmrfts.local;
-
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # WebSocket support — Vite HMR + SSE
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    }
-}
-```
-
-> **Recommendation:** For production, terminate TLS with a valid SSL certificate (for example, via Let's Encrypt / Certbot) and redirect HTTP to HTTPS.
+➡️ **Full example:** [docs/reverse-proxy.md](docs/reverse-proxy.md)
 
 ---
 
 ## Multi-Instance Deployment
 
-Multiple isolated instances (production, demo, staging, etc.) can run on the **same host** without port or container-name collisions. Each instance lives in its own directory with its own `.env`, Docker Compose project name, host ports, and data volumes.
+Run multiple isolated instances (production, demo, staging, …) on the same host without port or container-name collisions. Each instance gets its own `.env`, Docker Compose project name, host ports, and data volumes via the `--instance=NAME` flag.
 
-### How It Works
-
-The `--instance=NAME` flag tells `setup.sh` to generate a `.env` with a unique `COMPOSE_PROJECT_NAME` and a preset of non-overlapping host ports:
-
-| Instance | Project name | Frontend | Backend | Postgres | Redis | Monero RPC | APP_URL | Environment |
-|----------|-------------|----------|---------|----------|-------|------------|---------|-------------|
-| `prod` (default) | `xmrfts-prod` | 3000 | 8000 | 5432 | 6379 | 18082 | `dashboard.xmrfts.com` | production |
-| `demo` | `xmrfts-demo` | 3001 | 8001 | 5433 | 6380 | 18083 | `demo.xmrfts.com` | production |
-| `staging` | `xmrfts-staging` | 3002 | 8002 | 5434 | 6381 | 18084 | `staging.xmrfts.com` | staging |
-| custom | `xmrfts-{name}` | 3000 | 8000 | 5432 | 6379 | 18082 | `localhost` | production |
-
-For custom instance names, prod port defaults are used and the script prints a warning — edit `.env` to set unique host ports before starting alongside other instances.
-
-### Isolation Guarantees
-
-| Resource | Mechanism |
-|----------|----------|
-| **Container names** | `COMPOSE_PROJECT_NAME` prefix — each instance gets unique names (`xmrfts-prod-backend-1` vs `xmrfts-demo-backend-1`) |
-| **Docker networks** | Compose creates a separate bridge network per project — no cross-talk by service name |
-| **Host ports** | `FRONTEND_PORT`, `BACKEND_PORT`, `POSTGRES_PORT`, `REDIS_PORT`, `MONERO_RPC_PORT` — each instance uses a unique set |
-| **Data volumes** | Bind-mounts (`./postgres`, `./redis`, `./monero-wallet-rpc`, `./data`) are relative to each instance directory |
-| **Secrets** | Each instance has its own `.env` with independently generated `DB_PASSWORD`, `API_KEY`, `VIEW_KEY_MASTER_SECRET` |
-| **Database** | Each instance runs its own PostgreSQL container with a separate data directory |
-| **Git state** | Each instance is a separate clone — `update.sh` updates or rolls back each independently |
-
-### Example: Production + Demo on One Server
-
-```bash
-# ── Production (ports 3000 / 8000) ──────────────────────────────────────────
-git clone https://github.com/risubrevis/xmr-fund-transparency-suite.git \
-    /home/user/dashboard.xmrfts.com
-cd /home/user/dashboard.xmrfts.com
-./scripts/setup.sh
-#   → .env: COMPOSE_PROJECT_NAME=xmrfts-prod, ports 3000/8000/5432/6379/18082
-
-# ── Demo (ports 3001 / 8001) ────────────────────────────────────────────────
-git clone https://github.com/risubrevis/xmr-fund-transparency-suite.git \
-    /home/user/demo.xmrfts.com
-cd /home/user/demo.xmrfts.com
-./scripts/setup.sh --instance=demo
-#   → .env: COMPOSE_PROJECT_NAME=xmrfts-demo, ports 3001/8001/5433/6380/18083
-```
-
-Each instance must be in its own directory with its own git clone.
-
-### Updating a Specific Instance
-
-`update.sh` reads `COMPOSE_PROJECT_NAME` and `BACKEND_PORT` from `.env`, so it automatically targets the correct instance:
-
-```bash
-cd /home/user/demo.xmrfts.com
-./scripts/update.sh --instance=demo
-```
-
-### Nginx for Multiple Instances
-
-Each instance needs its own nginx `server` block pointing to its host ports. Production-grade configs with TLS 1.3, security headers, SSE support, and separate rate-limit zones are provided in the [docs repository](https://github.com/risubrevis/xmr-fund-transparency-suite-docs):
-
-| Domain | Frontend | Backend | Config file |
-|--------|----------|--------|-------------|
-| `dashboard.xmrfts.com` | `127.0.0.1:3000` | `127.0.0.1:8000` | `dashboard.xmrfts.com.nginx.conf` |
-| `demo.xmrfts.com` | `127.0.0.1:3001` | `127.0.0.1:8001` | `demo.xmrfts.com.nginx.conf` |
-| `staging.xmrfts.com` | `127.0.0.1:3002` | `127.0.0.1:8002` | *(create by analogy)* |
-
-Demo uses separate rate-limit zones (`api_limit_demo`, `sse_limit_demo`, `export_limit_demo`) so its traffic cannot exhaust the production rate-limit buckets. These zones must be added to `/etc/nginx/conf.d/rate_limiting.conf` (see `rate_limiting.nginx..conf` in the docs repo).
+➡️ **Full guide:** [docs/multi-instance.md](docs/multi-instance.md)
 
 ---
 
 ## API Reference
 
-All times are returned in ISO 8601 format unless a custom datetime pattern is configured via `PUT /api/v1/settings/datetime-format`.
+The backend exposes an admin REST API (protected by the `X-API-Key` header) covering wallets, funds, transactions, exports/reports, posts, and settings, plus a set of public widget endpoints with no auth required.
 
-### Admin API — Requires `X-API-Key` Header
-
-#### Wallets
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/v1/wallets` | Create a view-only wallet (address + view key + start height) |
-| `GET` | `/api/v1/wallets` | List all wallets |
-| `GET` | `/api/v1/wallets/{id}` | Wallet detail |
-| `PATCH` | `/api/v1/wallets/{id}` | Update wallet name or active status |
-| `DELETE` | `/api/v1/wallets/{id}` | Delete wallet + all its funds, transactions, and posts; close on RPC |
-
-#### Funds
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/v1/funds` | Create a fund linked to a wallet |
-| `GET` | `/api/v1/funds` | List funds (optionally filter by `wallet_id`) |
-| `GET` | `/api/v1/funds/{id}` | Fund detail + stats (`total_received_xmr`, `transaction_count`, `last_tx_at`) |
-| `PATCH` | `/api/v1/funds/{id}` | Update label, description, `is_active`, target, `deposit_address`, widget colors, public website |
-| `DELETE` | `/api/v1/funds/{id}` | Delete fund + its transactions and posts |
-
-#### Transactions
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/funds/{id}/txs` | Paginated transactions for a fund (date range, tier, multi-sort, cursor) |
-| `GET` | `/api/v1/wallets/{id}/txs` | Paginated transactions for a wallet across all its funds (optional `fund_id` filter) |
-
-#### Exports & Reports
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/funds/{id}/export/{format}` | Unified export: `pdf`, `xlsx`, `csv`, `xml`, `json` (same filters as `/txs`) |
-| `GET` | `/api/v1/funds/{id}/report.pdf` | PDF report (WeasyPrint) |
-| `GET` | `/api/v1/funds/{id}/report.xml` | XML report |
-| `GET` | `/api/v1/funds/{id}/widget-png` | Download widget as PNG image (`format` query: `business_card`, `wide`, `vertical`) |
-
-#### Real-Time & Posts
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/wallets/{id}/events` | SSE real-time stream for wallet scan updates (30s heartbeat) |
-| `POST` | `/api/v1/posts` | Create a news post (requires `fund_id`) |
-| `PATCH` | `/api/v1/posts/{id}` | Update a post (body and/or move to another fund) |
-| `DELETE` | `/api/v1/posts/{id}` | Delete a post |
-
-#### Settings
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/settings/datetime-format` | Get current datetime pattern |
-| `PUT` | `/api/v1/settings/datetime-format` | Update datetime pattern |
-
-### Public API — No Authentication Required
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/api/v1/posts` | List posts (filter by `fund_id`, `wallet_id`, `start_date`, `end_date`) |
-| `GET` | `/api/v1/wallets/{id}/posts` | List all posts for a wallet across its funds |
-| `GET` | `/widget/{uuid}.js` | Embeddable JavaScript widget (QR code + news) |
-| `GET` | `/widget/{uuid}.json` | Widget JSON data |
-| `GET` | `/widget/{uuid}/posts.json` | Widget posts JSON |
-| `GET` | `/widget/{uuid}/export/{format}` | Public widget export (`xml`, `csv`, `json`) |
-| `GET` | `/health` | Healthcheck with DB, Redis, RPC, and scanner status |
+➡️ **Full reference:** [docs/api-reference.md](docs/api-reference.md)
 
 ---
 
 ## Environment Variables
 
-All configuration is injected via the `.env` file:
+All configuration is injected via the `.env` file — secrets (`DB_PASSWORD`, `API_KEY`, `VIEW_KEY_MASTER_SECRET`), Monero RPC/daemon endpoints, scan/log settings, CORS, Sentry, and per-instance Docker ports. Generate `VIEW_KEY_MASTER_SECRET` with `openssl rand -hex 32`.
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `DB_PASSWORD` | *(auto-generated)* | PostgreSQL password |
-| `API_KEY` | `changeme` | Admin API key (64 hex chars) |
-| `VIEW_KEY_MASTER_SECRET` | `changeme` | Master secret for Fernet AES-256 encryption (≥ 32 bytes) |
-| `MONERO_RPC_URL` | `http://monero-wallet-rpc:18082/json_rpc` | `monero-wallet-rpc` endpoint |
-| `MONERO_DAEMON_ADDRESS` | `xmr.letmego.me:18089` | Daemon address for wallet sync |
-| `SCAN_INTERVAL` | `60` | Seconds between background scans |
-| `LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARNING` / `ERROR` |
-| `LOG_FORMAT` | `json` | `json` or `console` |
-| `ENVIRONMENT` | `local` | `local` / `staging` / `production` |
-| `APP_URL` | `localhost` | Used for CORS and widget origin |
-| `COMPOSE_PROJECT_NAME` | `xmrfts-prod` | Docker Compose project name — instance isolation (see [Multi-Instance Deployment](#multi-instance-deployment)) |
-| `FRONTEND_PORT` | `3000` | Host port for the frontend container |
-| `BACKEND_PORT` | `8000` | Host port for the backend container |
-| `POSTGRES_PORT` | `5432` | Host port for PostgreSQL |
-| `REDIS_PORT` | `6379` | Host port for Redis |
-| `MONERO_RPC_PORT` | `18082` | Host port for `monero-wallet-rpc` |
-| `CORS_ORIGINS` | *(empty)* | Additional comma-separated CORS origins |
-| `SENTRY_DSN` | *(empty)* | Optional Sentry error tracking DSN |
-
-> **Security note:** Generate `VIEW_KEY_MASTER_SECRET` with `openssl rand -hex 32`. It must be at least 32 bytes.
+➡️ **Full reference:** [docs/environment-variables.md](docs/environment-variables.md)
 
 ---
 
