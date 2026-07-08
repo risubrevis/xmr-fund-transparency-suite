@@ -160,15 +160,6 @@
         </div>
 
         <template v-else>
-          <!-- Wallet info card -->
-          <FundCard
-            :fund="currentFund"
-            :wallet="currentWallet"
-            :stats="currentFund.stats"
-            :refreshing="refreshing"
-            @refresh="refreshData"
-          />
-
           <!-- Fund Selector -->
           <div v-if="funds.length > 1" class="mt-4">
             <Selector
@@ -179,6 +170,15 @@
               @update:model-value="onFundChange"
             />
           </div>
+
+          <!-- Wallet info card -->
+          <FundCard
+            :fund="currentFund"
+            :wallet="currentWallet"
+            :stats="currentFund.stats"
+            :refreshing="refreshing"
+            @refresh="refreshData"
+          />
 
           <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <CumulativeReceivedChart
