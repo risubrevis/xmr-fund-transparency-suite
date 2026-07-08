@@ -17,6 +17,7 @@ const en: Messages = {
   "nav.wallets": "Wallets",
   "nav.settings": "Settings",
   "nav.disconnect": "Disconnect",
+  "nav.menu": "Menu",
 
   // Common
   "common.active": "Active",

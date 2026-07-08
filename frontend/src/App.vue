@@ -7,7 +7,9 @@
             <Landmark class="text-white" :size="24" />
             <span class="text-white font-bold text-lg">XMRFTS</span>
           </router-link>
-          <div class="flex items-center space-x-4">
+
+          <!-- Desktop navigation -->
+          <div class="hidden md:flex items-center space-x-4">
             <router-link
               to="/news"
               class="nav-link"
@@ -56,6 +58,68 @@
               <span>{{ t("nav.disconnect") }}</span>
             </button>
           </div>
+
+          <!-- Mobile hamburger button -->
+          <button
+            class="md:hidden text-gray-300 hover:text-white p-2 rounded-md transition-colors"
+            :aria-label="t('nav.menu')"
+            :aria-expanded="mobileMenuOpen"
+            @click="mobileMenuOpen = !mobileMenuOpen"
+          >
+            <Menu v-if="!mobileMenuOpen" :size="24" />
+            <X v-else :size="24" />
+          </button>
+        </div>
+      </div>
+
+      <!-- Mobile dropdown menu -->
+      <div
+        v-if="mobileMenuOpen"
+        class="md:hidden border-t border-monero-orange/10 bg-monero-dark"
+      >
+        <div class="px-4 py-3 space-y-1">
+          <router-link
+            to="/news"
+            class="mobile-nav-link"
+            :class="{
+              'text-white bg-monero-orange/20': $route.path === '/news',
+            }"
+            @click="mobileMenuOpen = false"
+          >
+            <Newspaper :size="18" />
+            <span>{{ t("nav.news") }}</span>
+          </router-link>
+          <router-link
+            to="/wallets"
+            class="mobile-nav-link"
+            :class="{
+              'text-white bg-monero-orange/20': $route.path.startsWith(
+                '/wallets',
+              ),
+            }"
+            @click="mobileMenuOpen = false"
+          >
+            <Wallet :size="18" />
+            <span>{{ t("nav.wallets") }}</span>
+          </router-link>
+          <router-link
+            to="/settings"
+            class="mobile-nav-link"
+            :class="{
+              'text-white bg-monero-orange/20': $route.path === '/settings',
+            }"
+            @click="mobileMenuOpen = false"
+          >
+            <Settings :size="18" />
+            <span>{{ t("nav.settings") }}</span>
+          </router-link>
+          <button
+            class="mobile-nav-link w-full text-left text-red-400 hover:bg-red-500/10"
+            @click="handleLogout"
+          >
+            <LogOut :size="18" />
+            <span>{{ t("nav.disconnect") }}</span>
+          </button>
         </div>
       </div>
     </nav>
@@ -73,18 +137,38 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
-import { useRouter } from "vue-router";
-import { Landmark, Settings, Wallet, LogOut, Newspaper } from "@lucide/vue";
+import { computed, ref, watch } from "vue";
+import { useRouter, useRoute } from "vue-router";
+import {
+  Landmark,
+  Settings,
+  Wallet,
+  LogOut,
+  Newspaper,
+  Menu,
+  X,
+} from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
 import { useI18n } from "@/composables/useI18n";
 
 const router = useRouter();
+const route = useRoute();
 const store = useFundStore();
 const { t } = useI18n();
 const apiKeySet = computed(() => store.apiKeySet);
 
+const mobileMenuOpen = ref(false);
+
+// Close the mobile menu whenever the route changes.
+watch(
+  () => route.path,
+  () => {
+    mobileMenuOpen.value = false;
+  },
+);
+
 function handleLogout() {
+  mobileMenuOpen.value = false;
   store.logout();
   router.push("/");
 }
@@ -93,5 +177,9 @@ function handleLogout() {
 <style scoped>
 .nav-link {
   @apply text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors;
+}
+
+.mobile-nav-link {
+  @apply flex items-center space-x-3 px-3 py-2.5 rounded-md text-sm font-medium text-gray-300 hover:text-white transition-colors;
 }
 </style>

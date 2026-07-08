@@ -15,6 +15,7 @@ const uk: Messages = {
   "nav.wallets": "Гаманці",
   "nav.settings": "Налаштування",
   "nav.disconnect": "Вийти",
+  "nav.menu": "Меню",
 
   "common.active": "Активний",
   "common.inactive": "Неактивний",

@@ -15,6 +15,7 @@ const ru: Messages = {
   "nav.wallets": "Кошельки",
   "nav.settings": "Настройки",
   "nav.disconnect": "Отключиться",
+  "nav.menu": "Меню",
 
   "common.active": "Активен",
   "common.inactive": "Неактивен",

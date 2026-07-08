@@ -15,6 +15,7 @@ const ptBR: Messages = {
   "nav.wallets": "Carteiras",
   "nav.settings": "Configurações",
   "nav.disconnect": "Desconectar",
+  "nav.menu": "Menu",
 
   "common.active": "Ativo",
   "common.inactive": "Inativo",
