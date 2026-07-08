@@ -7,7 +7,7 @@ from slowapi.util import get_remote_address
 
 from app.config import settings
 from app.logging import get_logger, setup_logging
-from app.settings import ensure_settings_file
+from app.settings import ensure_locale_default, ensure_settings_file
 
 logger = get_logger("app")
 
@@ -79,6 +79,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def startup() -> None:
         ensure_settings_file()
+        ensure_locale_default()
         logger.info("application_started")
 
     @app.on_event("shutdown")

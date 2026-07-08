@@ -4,7 +4,7 @@
       <div class="flex items-center gap-2">
         <BarChart3 class="w-5 h-5 text-orange-500" />
         <h3 class="text-lg font-semibold text-gray-900">
-          XMR Volume Distribution
+          {{ t("charts.volumeDistribution") }}
         </h3>
       </div>
 
@@ -34,7 +34,7 @@
       v-else-if="transactions.length === 0"
       class="h-64 flex items-center justify-center text-gray-400"
     >
-      No transaction data available yet
+      {{ t("charts.noData") }}
     </div>
 
     <div v-else class="h-64">
@@ -61,6 +61,7 @@ import type { Transaction } from "@/lib/api";
 import type { TimeInterval } from "@/composables/useTransactionAggregation";
 import { useTransactionAggregation } from "@/composables/useTransactionAggregation";
 import { useChartPreferences } from "@/composables/useChartPreferences";
+import { useI18n } from "@/composables/useI18n";
 import { formatXmr } from "@/lib/format";
 
 ChartJS.register(
@@ -86,6 +87,7 @@ const intervalOptions: { value: TimeInterval; label: string }[] = [
 ];
 
 const { volumeInterval: selectedInterval } = useChartPreferences();
+const { t } = useI18n();
 
 const transactionsRef = computed(() => props.transactions);
 const { volumeData } = useTransactionAggregation(transactionsRef);
@@ -96,7 +98,7 @@ const chartData = computed(() => {
     labels,
     datasets: [
       {
-        label: "XMR Volume",
+        label: t("charts.xmrVolume"),
         data: values,
         backgroundColor: "#FF6600",
         hoverBackgroundColor: "#e55a00",

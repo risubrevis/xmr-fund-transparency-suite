@@ -2,7 +2,7 @@
   <div class="space-y-6">
     <!-- Create post card -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h2 class="text-2xl font-bold text-gray-900 mb-4">News</h2>
+      <h2 class="text-2xl font-bold text-gray-900 mb-4">{{ t("news.title") }}</h2>
 
       <!-- Wallet & Fund selectors for creating a post -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
@@ -11,14 +11,14 @@
             for="create-wallet"
             class="block text-sm font-medium text-gray-700 mb-1"
           >
-            Wallet
+            {{ t("common.wallet") }}
           </label>
           <select
             id="create-wallet"
             v-model="createWalletId"
             class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
           >
-            <option value="">Select wallet</option>
+            <option value="">{{ t("common.selectWallet") }}</option>
             <option
               v-for="wallet in wallets"
               :key="wallet.id"
@@ -33,7 +33,7 @@
             for="create-fund"
             class="block text-sm font-medium text-gray-700 mb-1"
           >
-            Fund
+            {{ t("common.fund") }}
           </label>
           <select
             id="create-fund"
@@ -41,7 +41,7 @@
             class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
             :disabled="!createWalletId"
           >
-            <option value="">Select fund</option>
+            <option value="">{{ t("common.selectFund") }}</option>
             <option
               v-for="fund in availableFunds"
               :key="fund.id"
@@ -56,7 +56,7 @@
       <textarea
         v-model="newPostBody"
         class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-monero-orange focus:outline-none focus:ring-1 focus:ring-monero-orange resize-y min-h-[80px]"
-        placeholder="What's new? Share an update with your supporters..."
+        :placeholder="t('news.postPlaceholder')"
         maxlength="2048"
         :disabled="submitting"
       />
@@ -72,7 +72,7 @@
           <div class="flex items-center space-x-1">
             <Loader2 v-if="submitting" :size="14" class="animate-spin" />
             <Send v-else :size="14" />
-            <span>{{ submitting ? "Posting..." : "Post" }}</span>
+            <span>{{ submitting ? t("news.posting") : t("news.post") }}</span>
           </div>
         </Button>
       </div>
@@ -80,21 +80,21 @@
 
     <!-- Filters card -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <h3 class="text-sm font-semibold text-gray-700 mb-3">Filters</h3>
+      <h3 class="text-sm font-semibold text-gray-700 mb-3">{{ t("news.filters") }}</h3>
       <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
         <div>
           <label
             for="filter-wallet"
             class="block text-xs font-medium text-gray-500 mb-1"
           >
-            Wallet
+            {{ t("common.wallet") }}
           </label>
           <select
             id="filter-wallet"
             v-model="filterWalletId"
             class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
           >
-            <option value="">All wallets</option>
+            <option value="">{{ t("news.allWallets") }}</option>
             <option
               v-for="wallet in wallets"
               :key="wallet.id"
@@ -109,7 +109,7 @@
             for="filter-fund"
             class="block text-xs font-medium text-gray-500 mb-1"
           >
-            Fund
+            {{ t("common.fund") }}
           </label>
           <select
             id="filter-fund"
@@ -117,7 +117,7 @@
             class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
             :disabled="!filterWalletId"
           >
-            <option value="">All funds</option>
+            <option value="">{{ t("news.allFunds") }}</option>
             <option v-for="fund in filterFunds" :key="fund.id" :value="fund.id">
               {{ fund.label }}
             </option>
@@ -128,7 +128,7 @@
             for="filter-start"
             class="block text-xs font-medium text-gray-500 mb-1"
           >
-            From
+            {{ t("news.from") }}
           </label>
           <input
             id="filter-start"
@@ -142,7 +142,7 @@
             for="filter-end"
             class="block text-xs font-medium text-gray-500 mb-1"
           >
-            To
+            {{ t("news.to") }}
           </label>
           <input
             id="filter-end"
@@ -156,7 +156,7 @@
         <Button variant="outline" size="sm" @click="clearFilters">
           <div class="flex items-center space-x-1">
             <X :size="14" />
-            <span>Clear filters</span>
+            <span>{{ t("news.clearFilters") }}</span>
           </div>
         </Button>
       </div>
@@ -164,7 +164,7 @@
 
     <!-- Posts list -->
     <div v-if="loading" class="text-center py-8 text-gray-500">
-      Loading posts...
+      {{ t("news.loadingPosts") }}
     </div>
     <div
       v-else-if="posts.length === 0"
@@ -172,7 +172,7 @@
     >
       <Newspaper :size="32" class="mx-auto text-gray-300 mb-2" />
       <p class="text-gray-500 text-sm">
-        No posts yet. Share your first update!
+        {{ t("news.noPosts") }}
       </p>
     </div>
     <div v-else class="space-y-4">
@@ -211,7 +211,7 @@
               <Button variant="ghost" size="sm" @click="startEditing(post)">
                 <div class="flex items-center space-x-1">
                   <Pencil :size="14" />
-                  <span>Edit</span>
+                  <span>{{ t("common.edit") }}</span>
                 </div>
               </Button>
               <Button
@@ -222,7 +222,7 @@
               >
                 <div class="flex items-center space-x-1">
                   <Trash2 :size="14" />
-                  <span>Delete</span>
+                  <span>{{ t("common.delete") }}</span>
                 </div>
               </Button>
             </div>
@@ -234,13 +234,13 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                Wallet
+                {{ t("common.wallet") }}
               </label>
               <select
                 v-model="editWalletId"
                 class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
               >
-                <option value="">Select wallet</option>
+                <option value="">{{ t("common.selectWallet") }}</option>
                 <option
                   v-for="wallet in wallets"
                   :key="wallet.id"
@@ -252,14 +252,14 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                Fund
+                {{ t("common.fund") }}
               </label>
               <select
                 v-model="editFundId"
                 class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
                 :disabled="!editWalletId"
               >
-                <option value="">Select fund</option>
+                <option value="">{{ t("common.selectFund") }}</option>
                 <option
                   v-for="fund in editFunds"
                   :key="fund.id"
@@ -286,7 +286,7 @@
                 size="sm"
                 :disabled="saving"
                 @click="cancelEditing"
-                >Cancel</Button
+                >{{ t("common.cancel") }}</Button
               >
               <Button
                 variant="default"
@@ -297,7 +297,7 @@
                 <div class="flex items-center space-x-1">
                   <Loader2 v-if="saving" :size="14" class="animate-spin" />
                   <Save v-else :size="14" />
-                  <span>{{ saving ? "Saving..." : "Save" }}</span>
+                  <span>{{ saving ? t("common.saving") : t("common.save") }}</span>
                 </div>
               </Button>
             </div>
@@ -309,11 +309,12 @@
     <!-- Delete confirmation -->
     <ConfirmDialog
       :open="!!deletingPost"
-      title="Delete Post"
-      message="Are you sure you want to delete this post? This action cannot be undone."
-      confirm-text="Delete"
+      :title="t('news.deleteTitle')"
+      :message="t('news.deleteMsg')"
+      :cancel-text="t('common.cancel')"
+      :confirm-text="t('common.delete')"
       :loading="deleting"
-      loading-text="Deleting..."
+      :loading-text="t('common.deleting')"
       @confirm="handleDelete"
       @cancel="deletingPost = null"
     />
@@ -344,8 +345,10 @@ import {
   type Fund,
 } from "@/lib/api";
 import { useFundStore } from "@/stores/fund";
+import { useI18n } from "@/composables/useI18n";
 
 const store = useFundStore();
+const { t } = useI18n();
 
 // Data
 const posts = ref<Post[]>([]);

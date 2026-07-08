@@ -3,16 +3,16 @@
     <div v-if="!currentFund" class="text-center py-16">
       <Code2 class="mx-auto text-gray-400" :size="48" />
       <h2 class="text-2xl font-bold text-gray-900 mt-4 mb-2">
-        No Fund Configured
+        {{ t("dashboard.noFundTitle") }}
       </h2>
       <p class="text-gray-600 mb-6">
-        Create a fund first to configure its public widget.
+        {{ t("widget.noFundDesc") }}
       </p>
       <router-link to="/settings">
         <Button variant="default" size="lg">
           <div class="flex items-center space-x-2">
             <PlusCircle :size="18" />
-            <span>Create Fund</span>
+            <span>{{ t("common.createFund") }}</span>
           </div>
         </Button>
       </router-link>
@@ -21,16 +21,16 @@
     <template v-else>
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">Widget Settings</h1>
+          <h1 class="text-2xl font-bold text-gray-900">{{ t("widget.title") }}</h1>
           <p class="text-sm text-gray-600 mt-1">
-            Configure and embed the public widget for
+            {{ t("widget.subtitlePrefix") }}
             <strong>{{ currentFund.label }}</strong>
           </p>
         </div>
         <Button variant="outline" @click="refreshData">
           <div class="flex items-center space-x-1">
             <RefreshCw :size="16" />
-            <span>Refresh</span>
+            <span>{{ t("common.refresh") }}</span>
           </div>
         </Button>
       </div>
@@ -49,30 +49,28 @@
       <!-- Style Settings Card -->
       <div class="bg-white rounded-xl shadow-sm border border-gray-200">
         <div class="p-6 pb-4">
-          <h3 class="text-lg font-semibold text-gray-900">Style Settings</h3>
+          <h3 class="text-lg font-semibold text-gray-900">{{ t("widget.styleSettings") }}</h3>
           <p class="text-sm text-gray-600 mt-1">
-            Customize the appearance of the embedded widget. Colors are saved
-            per-fund.
+            {{ t("widget.styleDesc") }}
           </p>
         </div>
 
         <!-- Background Color Section -->
         <div class="px-6 pb-5 pt-2 border-t border-gray-100">
           <h4 class="text-sm font-semibold text-gray-800 mb-3">
-            Background Color
+            {{ t("widget.bgColor") }}
           </h4>
           <p class="text-xs text-gray-500 mb-4">
-            The base color for the widget gradient. The gradient will transition
-            from this color to a shifted hue variant.
+            {{ t("widget.bgColorDesc") }}
           </p>
           <ColorPicker v-model="widgetColor" />
         </div>
 
         <!-- Text Color Section -->
         <div class="px-6 pb-6 pt-4 border-t border-gray-100">
-          <h4 class="text-sm font-semibold text-gray-800 mb-3">Text Color</h4>
+          <h4 class="text-sm font-semibold text-gray-800 mb-3">{{ t("widget.textColor") }}</h4>
           <p class="text-xs text-gray-500 mb-4">
-            The color used for all text and the progress bar inside the widget.
+            {{ t("widget.textColorDesc") }}
           </p>
           <ColorPicker
             v-model="textColor"
@@ -87,7 +85,7 @@
           <div class="flex items-center space-x-2">
             <Loader2 v-if="savingColor" :size="16" class="animate-spin" />
             <Save v-else :size="16" />
-            <span>{{ savingColor ? "Saving..." : "Save Settings" }}</span>
+            <span>{{ savingColor ? t("common.saving") : t("widget.saveSettings") }}</span>
           </div>
         </Button>
       </div>
@@ -103,12 +101,14 @@ import { fundsApi } from "@/lib/api";
 import WidgetPreview from "@/components/Widget/WidgetPreview.vue";
 import ColorPicker from "@/components/Widget/ColorPicker.vue";
 import { Button } from "@/components/ui/button";
+import { useI18n } from "@/composables/useI18n";
 
 const DEFAULT_BG = "#667eea";
 const DEFAULT_TEXT = "#ffffff";
 
 const store = useFundStore();
 const currentFund = computed(() => store.currentFund);
+const { t } = useI18n();
 
 const widgetColor = ref(DEFAULT_BG);
 const textColor = ref(DEFAULT_TEXT);

@@ -5,7 +5,7 @@
     <div
       class="px-6 py-4 border-b border-gray-200 flex items-center justify-between"
     >
-      <h3 class="text-lg font-semibold text-gray-900">Recent Transactions</h3>
+      <h3 class="text-lg font-semibold text-gray-900">{{ t("txtable.title") }}</h3>
       <div class="flex items-center gap-3">
         <button
           v-if="isExpanded && !loading"
@@ -13,21 +13,21 @@
           @click="collapse"
         >
           <ChevronUp :size="14" />
-          <span>Collapse</span>
+          <span>{{ t("txtable.collapse") }}</span>
         </button>
         <button
           v-else-if="transactions.length > DEFAULT_PAGE_SIZE && !loading"
           class="text-sm text-monero-orange hover:underline cursor-pointer"
           @click="expand"
         >
-          Show all ({{ transactions.length }})
+          {{ t("txtable.showAll", { count: transactions.length }) }}
         </button>
         <span
           v-if="loading"
           class="text-sm text-gray-400 flex items-center space-x-1"
         >
           <Loader2 :size="14" class="animate-spin" />
-          <span>Loading...</span>
+          <span>{{ t("common.loading") }}</span>
         </span>
       </div>
     </div>
@@ -38,27 +38,27 @@
             <th
               class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
             >
-              Date
+              {{ t("txtable.colDate") }}
             </th>
             <th
               class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
             >
-              Amount
+              {{ t("txtable.colAmount") }}
             </th>
             <th
               class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
             >
-              Confirmations
+              {{ t("txtable.colConfirmations") }}
             </th>
             <th
               class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
             >
-              Height
+              {{ t("txtable.colHeight") }}
             </th>
             <th
               class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
             >
-              TXID
+              {{ t("txtable.colTxid") }}
             </th>
           </tr>
         </thead>
@@ -67,7 +67,7 @@
             <td colspan="5" class="px-6 py-8 text-center text-gray-500">
               <div class="flex flex-col items-center">
                 <Inbox :size="32" class="text-gray-300 mb-2" />
-                <span>No transactions match the current filters.</span>
+                <span>{{ t("txtable.noMatch") }}</span>
               </div>
             </td>
           </tr>
@@ -118,10 +118,12 @@ import { ref, computed, onMounted } from "vue";
 import { CheckCircle2, Clock, Inbox, Loader2, ChevronUp } from "@lucide/vue";
 import type { Transaction } from "@/lib/api";
 import { useDatetimeFormat } from "@/composables/useDatetimeFormat";
+import { useI18n } from "@/composables/useI18n";
 
 const DEFAULT_PAGE_SIZE = 30;
 
 const { formatDate: formatWithPattern, loadFormat } = useDatetimeFormat();
+const { t } = useI18n();
 
 const props = defineProps<{
   transactions: Transaction[];

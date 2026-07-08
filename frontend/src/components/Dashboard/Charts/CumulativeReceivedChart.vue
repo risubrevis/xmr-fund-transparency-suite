@@ -4,7 +4,7 @@
       <div class="flex items-center gap-2">
         <TrendingUp class="w-5 h-5 text-orange-500" />
         <h3 class="text-lg font-semibold text-gray-900">
-          Cumulative Received XMR
+          {{ t("charts.cumulativeReceived") }}
         </h3>
       </div>
       <div class="flex gap-1">
@@ -14,7 +14,7 @@
           :class="yScale === 'linear' ? 'bg-gray-100' : ''"
           @click="yScale = 'linear'"
         >
-          Linear
+          {{ t("charts.linear") }}
         </Button>
         <Button
           variant="outline"
@@ -22,7 +22,7 @@
           :class="yScale === 'logarithmic' ? 'bg-gray-100' : ''"
           @click="yScale = 'logarithmic'"
         >
-          Log
+          {{ t("charts.log") }}
         </Button>
       </div>
     </div>
@@ -35,7 +35,7 @@
       v-else-if="transactions.length === 0"
       class="h-64 flex items-center justify-center text-gray-400"
     >
-      No transaction data available yet
+      {{ t("charts.noData") }}
     </div>
 
     <div v-else class="h-64">
@@ -63,6 +63,7 @@ import { Button } from "@/components/ui/button";
 import type { Transaction } from "@/lib/api";
 import { useTransactionAggregation } from "@/composables/useTransactionAggregation";
 import { useChartPreferences } from "@/composables/useChartPreferences";
+import { useI18n } from "@/composables/useI18n";
 import { formatXmr } from "@/lib/format";
 
 ChartJS.register(
@@ -83,6 +84,7 @@ const props = defineProps<{
 }>();
 
 const { cumulativeYScale: yScale } = useChartPreferences();
+const { t } = useI18n();
 
 const transactionsRef = computed(() => props.transactions);
 const { cumulativeData } = useTransactionAggregation(transactionsRef);
@@ -121,7 +123,7 @@ const chartData = computed(() => {
 
   const datasets: any[] = [
     {
-      label: "Cumulative XMR",
+      label: t("charts.cumulativeXmr"),
       data: values,
       borderColor: "#FF6600",
       backgroundColor: (ctx: any) => {
@@ -149,7 +151,7 @@ const chartData = computed(() => {
     const target = parseFloat(props.targetAmount);
     if (!isNaN(target)) {
       datasets.push({
-        label: "Target",
+        label: t("charts.target"),
         data: Array(labels.length).fill(target),
         borderColor: "#9ca3af",
         borderDash: [6, 4],

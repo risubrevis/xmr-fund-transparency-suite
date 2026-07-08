@@ -1,9 +1,8 @@
 <template>
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-    <h3 class="text-lg font-semibold text-gray-900 mb-4">Public Widget</h3>
+    <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ t("widgetpreview.title") }}</h3>
     <p class="text-sm text-gray-600 mb-4">
-      This widget shows your total received balance publicly. Anyone with the
-      link can view it.
+      {{ t("widgetpreview.desc") }}
     </p>
 
     <!-- Widget Preview -->
@@ -24,7 +23,7 @@
           <div class="text-3xl font-bold mb-2">{{ totalXmr }} XMR</div>
           <div v-if="targetAmountXmr" class="mt-1 mb-2">
             <div class="text-xs opacity-80 mb-1">
-              Target: {{ targetAmountXmr }} XMR
+              {{ t("fundcard.target") }}: {{ targetAmountXmr }} XMR
             </div>
             <div
               class="w-full rounded-full h-2"
@@ -38,7 +37,7 @@
           </div>
           <div class="flex items-center space-x-1 text-xs opacity-80 mt-2">
             <Clock :size="12" />
-            <span>Updated: just now</span>
+            <span>{{ t("widgetpreview.updatedJustNow") }}</span>
           </div>
           <!-- Download buttons inside widget -->
           <div class="flex flex-wrap gap-1.5 mt-3">
@@ -137,7 +136,7 @@
             class="flex items-center gap-1"
           >
             <Newspaper :size="13" />
-            News
+            {{ t("funddetail.news") }}
             <span
               v-if="freshPostsCount > 0"
               style="
@@ -160,19 +159,19 @@
         </div>
         <div v-if="newsExpanded" style="margin-top: 10px">
           <div v-if="newsLoading" class="text-center py-2 opacity-70 text-xs">
-            Loading...
+            {{ t("funddetail.loadingNews") }}
           </div>
           <div
             v-else-if="newsError"
             class="text-center py-2 opacity-70 text-xs"
           >
-            Failed to load news
+            {{ t("funddetail.failedNews") }}
           </div>
           <div
             v-else-if="posts.length === 0"
             class="text-center py-2 opacity-60 text-xs"
           >
-            No news yet
+            {{ t("funddetail.noNews") }}
           </div>
           <div v-else>
             <div
@@ -211,7 +210,7 @@
               }"
               @click="loadMorePosts"
             >
-              {{ loadingMore ? "Loading..." : "Load more" }}
+              {{ loadingMore ? t("common.loading") : t("funddetail.loadMore") }}
             </button>
           </div>
         </div>
@@ -221,7 +220,7 @@
     <!-- Embed Code -->
     <div class="space-y-4">
       <div>
-        <p class="text-sm font-medium text-gray-700 mb-2">Embed code:</p>
+        <p class="text-sm font-medium text-gray-700 mb-2">{{ t("widgetpreview.embedCodeLabel") }}</p>
         <div
           class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto"
         >
@@ -232,7 +231,7 @@
         </div>
       </div>
       <div>
-        <p class="text-sm font-medium text-gray-700 mb-2">JSON API:</p>
+        <p class="text-sm font-medium text-gray-700 mb-2">{{ t("widgetpreview.jsonApiLabel") }}</p>
         <div
           class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto"
         >
@@ -242,8 +241,7 @@
       <p class="text-xs text-gray-500 flex items-center space-x-1">
         <Info :size="12" />
         <span
-          >The widget is cached for 60 seconds and rate-limited to 60 requests
-          per minute per IP.</span
+          >{{ t("funddetail.widgetCacheNote") }}</span
         >
       </p>
     </div>
@@ -263,6 +261,9 @@ import {
 } from "@lucide/vue";
 import QRCode from "qrcode";
 import { publicWidgetExportUrl } from "@/lib/api";
+import { useI18n } from "@/composables/useI18n";
+
+const { t } = useI18n();
 
 interface WidgetPost {
   id: string;
@@ -289,7 +290,14 @@ const props = withDefaults(
 );
 
 const qrDataUrl = ref("");
-const copyLabel = ref("Copy Address");
+const copyState = ref<"idle" | "copied" | "failed">("idle");
+const copyLabel = computed(() =>
+  copyState.value === "copied"
+    ? t("common.copied")
+    : copyState.value === "failed"
+      ? t("common.failed")
+      : t("funddetail.copyAddress"),
+);
 
 // News section state
 const newsExpanded = ref(false);
@@ -436,6 +444,7 @@ watch(() => props.depositAddress, generateQr);
 
 async function copyAddress() {
   if (!props.depositAddress) return;
+  const reset = () => setTimeout(() => (copyState.value = "idle"), 2000);
   try {
     // navigator.clipboard requires secure context (HTTPS/localhost)
     if (navigator.clipboard && window.isSecureContext) {
@@ -443,23 +452,17 @@ async function copyAddress() {
     } else {
       fallbackCopy(props.depositAddress);
     }
-    copyLabel.value = "Copied!";
-    setTimeout(() => {
-      copyLabel.value = "Copy Address";
-    }, 2000);
+    copyState.value = "copied";
+    reset();
   } catch {
     // Try fallback if modern API fails
     try {
       fallbackCopy(props.depositAddress);
-      copyLabel.value = "Copied!";
-      setTimeout(() => {
-        copyLabel.value = "Copy Address";
-      }, 2000);
+      copyState.value = "copied";
+      reset();
     } catch {
-      copyLabel.value = "Failed";
-      setTimeout(() => {
-        copyLabel.value = "Copy Address";
-      }, 2000);
+      copyState.value = "failed";
+      reset();
     }
   }
 }

@@ -28,7 +28,7 @@
         >
           <CircleCheck v-if="fund.is_active" :size="12" class="mr-1" />
           <CircleX v-else :size="12" class="mr-1" />
-          {{ fund.is_active ? "Active" : "Inactive" }}
+          {{ fund.is_active ? t("common.active") : t("common.inactive") }}
         </span>
         <span
           v-if="wallet?.scan_error"
@@ -36,42 +36,42 @@
           :title="wallet.scan_error"
         >
           <AlertTriangle :size="12" class="mr-1" />
-          Scan Error
+          {{ t("fundcard.scanError") }}
         </span>
         <span
           v-else-if="wallet?.last_scan_at"
           class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-full bg-blue-50 text-blue-700"
         >
           <Radio :size="12" class="mr-1" />
-          Scanning
+          {{ t("fundcard.scanning") }}
         </span>
       </div>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div>
-        <p class="text-sm text-gray-500">Total Received</p>
+        <p class="text-sm text-gray-500">{{ t("fundcard.totalReceived") }}</p>
         <p class="text-2xl font-bold text-monero-orange">
           {{ stats?.total_received_xmr || "0.00" }} XMR
         </p>
         <p v-if="fund.target_amount_xmr" class="text-xs text-gray-500 mt-1">
-          Target: {{ fund.target_amount_xmr }} XMR
+          {{ t("fundcard.target") }}: {{ fund.target_amount_xmr }} XMR
         </p>
       </div>
       <div>
-        <p class="text-sm text-gray-500">Transactions</p>
+        <p class="text-sm text-gray-500">{{ t("fundcard.transactions") }}</p>
         <p class="text-2xl font-bold text-gray-900">
           {{ stats?.transaction_count || 0 }}
         </p>
       </div>
       <div>
-        <p class="text-sm text-gray-500">Last Scan</p>
+        <p class="text-sm text-gray-500">{{ t("fundcard.lastScan") }}</p>
         <p class="text-sm text-gray-700">
-          {{ wallet?.last_scan_at ? formatDate(wallet.last_scan_at) : "Never" }}
+          {{ wallet?.last_scan_at ? formatDate(wallet.last_scan_at) : t("fundcard.never") }}
         </p>
         <p class="text-xs text-gray-500 mt-1">
-          Block height:
-          {{ wallet?.last_scanned_height?.toLocaleString() ?? "Not started" }}
+          {{ t("fundcard.blockHeight") }}
+          {{ wallet?.last_scanned_height?.toLocaleString() ?? t("fundcard.notStarted") }}
         </p>
       </div>
     </div>
@@ -82,7 +82,7 @@
     >
       <AlertTriangle :size="16" class="text-red-600 flex-shrink-0 mt-0.5" />
       <div>
-        <p class="text-sm font-semibold text-red-800">Scan error</p>
+        <p class="text-sm font-semibold text-red-800">{{ t("fundcard.scanErrorTitle") }}</p>
         <p class="text-sm text-red-700">{{ wallet.scan_error }}</p>
       </div>
     </div>
@@ -96,7 +96,7 @@
         <div class="flex items-center space-x-1">
           <Loader2 v-if="refreshing" :size="14" class="animate-spin" />
           <RefreshCw v-else :size="14" />
-          <span>{{ refreshing ? "Refreshing..." : "Refresh" }}</span>
+          <span>{{ refreshing ? t("common.refreshing") : t("common.refresh") }}</span>
         </div>
       </Button>
     </div>
@@ -115,9 +115,11 @@ import {
 } from "@lucide/vue";
 import type { Fund, Wallet } from "@/lib/api";
 import { useDatetimeFormat } from "@/composables/useDatetimeFormat";
+import { useI18n } from "@/composables/useI18n";
 import { Button } from "@/components/ui/button";
 
 const { formatDate: formatWithPattern, loadFormat } = useDatetimeFormat();
+const { t } = useI18n();
 
 defineProps<{
   fund: Fund;

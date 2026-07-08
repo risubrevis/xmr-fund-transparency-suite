@@ -9,17 +9,16 @@
         <div class="text-center mb-8">
           <Landmark class="mx-auto text-monero-orange" :size="48" />
           <h1 class="text-3xl font-bold text-gray-900 mt-4">
-            XMR Fund Transparency Suite
+            {{ t("app.title") }}
           </h1>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <h2 class="text-xl font-bold text-gray-900 mb-2">
-            Connect to Dashboard
+            {{ t("login.connectTitle") }}
           </h2>
           <p class="text-sm text-gray-600 mb-6">
-            Enter the API key that was configured during deployment. This key
-            authenticates all requests to the backend.
+            {{ t("login.description") }}
           </p>
 
           <div class="space-y-4">
@@ -28,7 +27,7 @@
                 for="api-key"
                 class="block text-sm font-medium text-gray-700 mb-1"
               >
-                API Key
+                {{ t("login.apiKey") }}
               </label>
               <div class="relative">
                 <KeyRound
@@ -39,7 +38,7 @@
                   id="api-key"
                   v-model="apiKeyInput"
                   :type="showKey ? 'text' : 'password'"
-                  placeholder="Enter your API key..."
+                  :placeholder="t('login.apiKeyPlaceholder')"
                   class="w-full pl-9 pr-4 h-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange font-mono text-sm"
                   @keyup.enter="login"
                 />
@@ -63,7 +62,7 @@
               <div class="flex items-center justify-center space-x-2">
                 <Loader2 v-if="validating" :size="16" class="animate-spin" />
                 <LogIn v-else :size="16" />
-                <span>{{ validating ? "Validating..." : "Connect" }}</span>
+                <span>{{ validating ? t("login.validating") : t("login.connect") }}</span>
               </div>
             </Button>
 
@@ -78,8 +77,7 @@
 
           <div class="mt-6 pt-4 border-t border-gray-100">
             <p class="text-xs text-gray-400 text-center">
-              The API key is stored locally in your browser and never sent to
-              third parties.
+              {{ t("login.privacyNote") }}
             </p>
           </div>
         </div>
@@ -91,33 +89,33 @@
       <!-- Loading -->
       <div v-if="loading" class="text-center py-16">
         <Loader2 class="mx-auto animate-spin text-monero-orange" :size="40" />
-        <p class="text-gray-600 mt-4">Loading data...</p>
+        <p class="text-gray-600 mt-4">{{ t("dashboard.loadingData") }}</p>
       </div>
 
       <!-- Error -->
       <div v-else-if="error" class="text-center py-16">
         <AlertTriangle class="mx-auto text-amber-500" :size="40" />
         <h2 class="text-xl font-bold text-gray-900 mt-4 mb-2">
-          Error Loading Data
+          {{ t("dashboard.errorLoadingTitle") }}
         </h2>
         <p class="text-gray-600 mb-4">{{ error }}</p>
-        <Button variant="default" @click="retryLoad">Retry</Button>
+        <Button variant="default" @click="retryLoad">{{ t("common.retry") }}</Button>
       </div>
 
       <!-- No wallet configured -->
       <div v-else-if="wallets.length === 0" class="text-center py-16">
         <Wallet class="mx-auto text-gray-400" :size="48" />
         <h2 class="text-2xl font-bold text-gray-900 mt-4 mb-2">
-          No Wallet Configured
+          {{ t("dashboard.noWalletTitle") }}
         </h2>
         <p class="text-gray-600 mb-6">
-          Create a wallet and fund to start tracking incoming Monero donations.
+          {{ t("dashboard.noWalletDesc") }}
         </p>
         <router-link to="/wallets">
           <Button variant="default" size="lg">
             <div class="flex items-center space-x-2">
               <PlusCircle :size="18" />
-              <span>Go to Wallets</span>
+              <span>{{ t("dashboard.goToWallets") }}</span>
             </div>
           </Button>
         </router-link>
@@ -130,17 +128,16 @@
       >
         <Wallet class="mx-auto text-gray-400" :size="48" />
         <h2 class="text-2xl font-bold text-gray-900 mt-4 mb-2">
-          No Fund Configured
+          {{ t("dashboard.noFundTitle") }}
         </h2>
         <p class="text-gray-600 mb-6">
-          This wallet has no funds yet. Create a fund to start tracking
-          donations.
+          {{ t("dashboard.noFundDesc") }}
         </p>
         <router-link :to="`/wallets/${currentWallet.uuid}`">
           <Button variant="default" size="lg">
             <div class="flex items-center space-x-2">
               <PlusCircle :size="18" />
-              <span>Create Fund</span>
+              <span>{{ t("common.createFund") }}</span>
             </div>
           </Button>
         </router-link>
@@ -153,13 +150,13 @@
           :model-value="currentWallet.id"
           :options="walletOptions"
           :disabled="wallets.length <= 1 || switchingWallet"
-          label="Wallet"
+          :label="t('common.wallet')"
           @update:model-value="onWalletChange"
         />
 
         <div v-if="switchingWallet" class="text-center py-8">
           <Loader2 class="mx-auto animate-spin text-monero-orange" :size="32" />
-          <p class="text-gray-600 mt-3 text-sm">Loading wallet data...</p>
+          <p class="text-gray-600 mt-3 text-sm">{{ t("dashboard.loadingWallet") }}</p>
         </div>
 
         <template v-else>
@@ -178,7 +175,7 @@
               :model-value="currentFund.id"
               :options="fundOptions"
               :disabled="switchingFund"
-              label="Fund"
+              :label="t('common.fund')"
               @update:model-value="onFundChange"
             />
           </div>
@@ -264,6 +261,7 @@ import {
 import { useFundStore } from "@/stores/fund";
 import { fundsApi, type Transaction } from "@/lib/api";
 import { useTransactionFilters } from "@/composables/useTransactionFilters";
+import { useI18n } from "@/composables/useI18n";
 import FundCard from "@/components/Dashboard/FundCard.vue";
 import CumulativeReceivedChart from "@/components/Dashboard/Charts/CumulativeReceivedChart.vue";
 import TargetProgressBar from "@/components/Dashboard/Charts/TargetProgressBar.vue";
@@ -278,6 +276,7 @@ import { Selector, type SelectorOption } from "@/components/ui/selector";
 const router = useRouter();
 const store = useFundStore();
 const filters = useTransactionFilters();
+const { t } = useI18n();
 
 const apiKeyInput = ref("");
 const showKey = ref(false);

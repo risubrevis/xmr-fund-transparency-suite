@@ -3,10 +3,9 @@
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
-        <h2 class="text-2xl font-bold text-gray-900">Wallets</h2>
+        <h2 class="text-2xl font-bold text-gray-900">{{ t("wallets.title") }}</h2>
         <p class="text-sm text-gray-600 mt-1">
-          Manage your view-only wallets. Each wallet can have multiple funds
-          with their own deposit addresses.
+          {{ t("wallets.subtitle") }}
         </p>
       </div>
       <Button
@@ -17,7 +16,7 @@
       >
         <div class="flex items-center space-x-1.5">
           <PlusCircle :size="16" />
-          <span>Create Wallet</span>
+          <span>{{ t("wallets.createWallet") }}</span>
         </div>
       </Button>
     </div>
@@ -25,17 +24,17 @@
     <!-- Loading -->
     <div v-if="loading" class="text-center py-16">
       <Loader2 class="mx-auto animate-spin text-monero-orange" :size="40" />
-      <p class="text-gray-600 mt-4">Loading wallets...</p>
+      <p class="text-gray-600 mt-4">{{ t("wallets.loadingWallets") }}</p>
     </div>
 
     <!-- Error -->
     <div v-else-if="error" class="text-center py-16">
       <AlertTriangle class="mx-auto text-amber-500" :size="40" />
       <h3 class="text-xl font-bold text-gray-900 mt-4 mb-2">
-        Error Loading Wallets
+        {{ t("wallets.errorLoadingTitle") }}
       </h3>
       <p class="text-gray-600 mb-4">{{ error }}</p>
-      <Button variant="default" @click="retryLoad">Retry</Button>
+      <Button variant="default" @click="retryLoad">{{ t("common.retry") }}</Button>
     </div>
 
     <!-- Create wallet form -->
@@ -46,12 +45,11 @@
       <div class="mb-6">
         <h3 class="text-xl font-bold text-gray-900">
           {{
-            walletList.length === 0 ? "Set Up Your Wallet" : "Create New Wallet"
+            walletList.length === 0 ? t("wallets.setUpWallet") : t("wallets.createNew")
           }}
         </h3>
         <p class="text-sm text-gray-600 mt-1">
-          Connect a Monero view-only wallet by providing its primary address and
-          private view key. This information is encrypted before storage.
+          {{ t("wallets.createDesc") }}
         </p>
       </div>
 
@@ -62,17 +60,17 @@
             for="wallet-name"
             class="block text-sm font-medium text-gray-700 mb-1"
           >
-            Wallet Name
+            {{ t("wallets.walletName") }}
           </label>
           <input
             id="wallet-name"
             v-model="createForm.name"
             type="text"
-            placeholder="My Monero Wallet"
+            :placeholder="t('wallets.walletNamePh')"
             class="w-full h-9 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm"
           />
           <p class="text-xs text-gray-500 mt-1">
-            A display name for this wallet.
+            {{ t("wallets.walletNameHint") }}
           </p>
         </div>
 
@@ -82,7 +80,7 @@
             for="primary-address"
             class="block text-sm font-medium text-gray-700 mb-1"
           >
-            Primary Address
+            {{ t("wallets.primaryAddress") }}
             <span class="text-red-500">*</span>
           </label>
           <input
@@ -94,8 +92,7 @@
             class="w-full h-9 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm font-mono"
           />
           <p class="text-xs text-gray-500 mt-1">
-            Your wallet's primary Monero address (95 characters, starts with
-            4/8/A/B).
+            {{ t("wallets.primaryAddressHint") }}
           </p>
         </div>
 
@@ -105,7 +102,7 @@
             for="view-key"
             class="block text-sm font-medium text-gray-700 mb-1"
           >
-            Private View Key
+            {{ t("wallets.viewKey") }}
             <span class="text-red-500">*</span>
           </label>
           <div class="relative">
@@ -113,7 +110,7 @@
               id="view-key"
               v-model="createForm.view_key"
               :type="showViewKey ? 'text' : 'password'"
-              placeholder="64 hex characters"
+              :placeholder="t('wallets.viewKeyPh')"
               required
               class="w-full h-9 pl-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm font-mono"
             />
@@ -127,8 +124,8 @@
             </button>
           </div>
           <p class="text-xs text-gray-500 mt-1">
-            Your wallet's private view key (64 hex characters).
-            <strong>Never share your spend key.</strong>
+            {{ t("wallets.viewKeyHint") }}
+            <strong>{{ t("wallets.neverShareSpend") }}</strong>
           </p>
         </div>
 
@@ -138,7 +135,7 @@
             for="start-height"
             class="block text-sm font-medium text-gray-700 mb-1"
           >
-            Start Height
+            {{ t("wallets.startHeight") }}
           </label>
           <input
             id="start-height"
@@ -149,8 +146,7 @@
             class="w-full h-9 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm"
           />
           <p class="text-xs text-gray-500 mt-1">
-            Block height to start scanning from. Lower = more history, higher =
-            faster sync.
+            {{ t("wallets.startHeightHint") }}
           </p>
         </div>
 
@@ -168,7 +164,7 @@
             <div class="flex items-center space-x-2">
               <Loader2 v-if="creating" :size="16" class="animate-spin" />
               <PlusCircle v-else :size="16" />
-              <span>{{ creating ? "Creating..." : "Create Wallet" }}</span>
+              <span>{{ creating ? t("common.creating") : t("wallets.createWallet") }}</span>
             </div>
           </Button>
           <Button
@@ -180,7 +176,7 @@
               createError = '';
             "
           >
-            Cancel
+            {{ t("common.cancel") }}
           </Button>
         </div>
       </form>
@@ -211,13 +207,13 @@
           >
             <Check v-if="wallet.is_active" :size="12" class="mr-1" />
             <X v-else :size="12" class="mr-1" />
-            {{ wallet.is_active ? "Active" : "Inactive" }}
+            {{ wallet.is_active ? t("common.active") : t("common.inactive") }}
           </span>
         </div>
 
         <!-- Primary address -->
         <div class="mb-4">
-          <p class="text-xs text-gray-500 mb-1">Primary Address</p>
+          <p class="text-xs text-gray-500 mb-1">{{ t("wallets.primaryAddress") }}</p>
           <p class="text-sm font-mono text-gray-700 break-all">
             {{ truncateAddress(wallet.primary_address) }}
           </p>
@@ -226,25 +222,25 @@
         <!-- Details grid -->
         <div class="grid grid-cols-2 gap-x-4 gap-y-3 mb-4">
           <div>
-            <p class="text-xs text-gray-500">Start Height</p>
+            <p class="text-xs text-gray-500">{{ t("wallets.startHeight") }}</p>
             <p class="text-sm text-gray-900 font-medium">
               {{ wallet.start_height.toLocaleString() }}
             </p>
           </div>
           <div>
-            <p class="text-xs text-gray-500">Created</p>
+            <p class="text-xs text-gray-500">{{ t("wallets.created") }}</p>
             <p class="text-sm text-gray-900">
               {{ formatDate(wallet.created_at) }}
             </p>
           </div>
           <div>
-            <p class="text-xs text-gray-500">Last Scanned Height</p>
+            <p class="text-xs text-gray-500">{{ t("wallets.lastScannedHeight") }}</p>
             <p class="text-sm text-gray-900 font-medium">
               {{ wallet.last_scanned_height?.toLocaleString() ?? "—" }}
             </p>
           </div>
           <div>
-            <p class="text-xs text-gray-500">Last Scan At</p>
+            <p class="text-xs text-gray-500">{{ t("wallets.lastScanAt") }}</p>
             <p class="text-sm text-gray-900">
               {{ wallet.last_scan_at ? formatDate(wallet.last_scan_at) : "—" }}
             </p>
@@ -258,7 +254,7 @@
         >
           <AlertTriangle :size="16" class="text-red-600 flex-shrink-0 mt-0.5" />
           <div>
-            <p class="text-sm font-semibold text-red-800">Scan error</p>
+            <p class="text-sm font-semibold text-red-800">{{ t("wallets.scanError") }}</p>
             <p class="text-sm text-red-700">{{ wallet.scan_error }}</p>
           </div>
         </div>
@@ -269,7 +265,7 @@
             <Button variant="default" size="sm">
               <div class="flex items-center space-x-1.5">
                 <Settings :size="14" />
-                <span>Settings & Funds</span>
+                <span>{{ t("wallets.settingsFunds") }}</span>
               </div>
             </Button>
           </router-link>
@@ -287,7 +283,7 @@
               />
               <RefreshCw v-else :size="14" />
               <span>{{
-                refreshing === wallet.id ? "Refreshing..." : "Refresh"
+                refreshing === wallet.id ? t("common.refreshing") : t("common.refresh")
               }}</span>
             </div>
           </Button>
@@ -298,7 +294,7 @@
           >
             <div class="flex items-center space-x-1.5">
               <Trash2 :size="14" />
-              <span>Delete</span>
+              <span>{{ t("common.delete") }}</span>
             </div>
           </Button>
         </div>
@@ -307,17 +303,17 @@
 
     <ConfirmDialog
       :open="!!deleteTarget"
-      title="Confirm Deletion"
-      :message="`Are you sure you want to delete the wallet ${deleteTarget?.name}?`"
-      confirm-text="Delete Wallet"
+      :title="t('wallets.confirmDeleteTitle')"
+      :message="t('wallets.confirmDeleteMsg', { name: deleteTarget?.name ?? '' })"
+      :confirm-text="t('wallets.deleteWallet')"
+      :cancel-text="t('common.cancel')"
       :loading="deleting"
-      loading-text="Deleting..."
+      :loading-text="t('wallets.deleting')"
       @confirm="handleDelete"
       @cancel="deleteTarget = null"
     >
       <p class="text-sm text-red-600 mt-2">
-        All associated funds, transactions, and posts will be permanently
-        removed. This cannot be undone.
+        {{ t("wallets.deleteWarning") }}
       </p>
     </ConfirmDialog>
   </div>
@@ -344,9 +340,11 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { useFundStore } from "@/stores/fund";
 import { walletsApi, type Wallet as WalletType } from "@/lib/api";
 import { useDatetimeFormat } from "@/composables/useDatetimeFormat";
+import { useI18n } from "@/composables/useI18n";
 
 const store = useFundStore();
 const { formatDate: formatWithPattern, loadFormat } = useDatetimeFormat();
+const { t } = useI18n();
 
 const walletList = computed(() => store.wallets);
 const loading = ref(true);
@@ -401,7 +399,7 @@ async function handleDelete() {
     await store.loadWallets();
     deleteTarget.value = null;
   } catch (err: any) {
-    error.value = err.response?.data?.detail || "Failed to delete wallet";
+    error.value = err.response?.data?.detail || t("common.failedDeleteWallet");
   } finally {
     deleting.value = false;
   }
@@ -424,7 +422,7 @@ async function retryLoad() {
   try {
     await store.loadWallets();
   } catch (err: any) {
-    error.value = err.response?.data?.detail || "Failed to load wallets";
+    error.value = err.response?.data?.detail || t("common.failedLoadWallets");
   } finally {
     loading.value = false;
   }
@@ -451,7 +449,7 @@ async function handleCreateWallet() {
       };
     }
   } catch (err: any) {
-    createError.value = err.response?.data?.detail || "Failed to create wallet";
+    createError.value = err.response?.data?.detail || t("common.failedCreateWallet");
   } finally {
     creating.value = false;
   }

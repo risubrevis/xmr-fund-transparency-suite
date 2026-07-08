@@ -1,14 +1,13 @@
 <template>
   <div class="space-y-6">
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-      <h2 class="text-2xl font-bold text-gray-900 mb-6">Settings</h2>
+      <h2 class="text-2xl font-bold text-gray-900 mb-6">{{ t("settings.title") }}</h2>
       <div class="space-y-8">
         <!-- API Key -->
         <div>
-          <h3 class="text-lg font-semibold text-gray-900 mb-2">API Key</h3>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ t("settings.apiKey") }}</h3>
           <p class="text-sm text-gray-600 mb-3">
-            Your API key is stored locally in the browser. Clear it to
-            disconnect and require re-authentication.
+            {{ t("settings.apiKeyDesc") }}
           </p>
           <div class="flex gap-3 items-center">
             <input
@@ -20,23 +19,52 @@
             <Button variant="destructive" @click="handleLogout">
               <div class="flex items-center space-x-1">
                 <LogOut :size="14" />
-                <span>Disconnect</span>
+                <span>{{ t("nav.disconnect") }}</span>
               </div>
             </Button>
+          </div>
+        </div>
+
+        <!-- Language / Localization -->
+        <div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ t("language.label") }}</h3>
+          <p class="text-sm text-gray-600 mb-3">
+            {{ t("settings.languageDesc") }}
+          </p>
+          <div>
+            <label
+              for="locale-select"
+              class="block text-sm font-medium text-gray-700 mb-1"
+            >
+              {{ t("language.label") }}
+            </label>
+            <select
+              id="locale-select"
+              :value="locale"
+              class="w-full sm:max-w-xs px-4 h-9 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm bg-white cursor-pointer"
+              @change="onLocaleChange"
+            >
+              <option
+                v-for="loc in locales"
+                :key="loc.code"
+                :value="loc.code"
+              >
+                {{ loc.label }}
+              </option>
+            </select>
           </div>
         </div>
 
         <!-- Date and Time Format -->
         <div>
           <h3 class="text-lg font-semibold text-gray-900 mb-2">
-            Date and Time Format
+            {{ t("settings.datetimeFormat") }}
           </h3>
           <p class="text-sm text-gray-600 mb-3">
-            This setting affects how dates and times are displayed on the
-            dashboard and in all PDF/XML reports.
+            {{ t("settings.datetimeDesc") }}
           </p>
           <div class="mb-3 space-y-1.5">
-            <p class="text-xs text-gray-500">Example patterns:</p>
+            <p class="text-xs text-gray-500">{{ t("settings.examplePatterns") }}</p>
             <div
               v-for="example in formatExamples"
               :key="example.pattern"
@@ -55,7 +83,7 @@
               for="datetime-format"
               class="block text-sm font-medium text-gray-700 mb-1"
             >
-              Format pattern
+              {{ t("settings.formatPattern") }}
             </label>
             <div class="flex gap-3 items-start">
               <div class="flex-1">
@@ -83,7 +111,7 @@
                     class="animate-spin"
                   />
                   <Save v-else :size="14" />
-                  <span>{{ savingFormat ? "Saving..." : "Update" }}</span>
+                  <span>{{ savingFormat ? t("settings.saving") : t("settings.update") }}</span>
                 </div>
               </Button>
             </div>
@@ -101,14 +129,17 @@ import { LogOut, Save, Loader2 } from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
 import { Button } from "@/components/ui/button";
 import { useDatetimeFormat } from "@/composables/useDatetimeFormat";
+import { useI18n } from "@/composables/useI18n";
+import type { LocaleCode } from "@/i18n/types";
 
 const router = useRouter();
 const store = useFundStore();
 const { loadFormat, updateFormat } = useDatetimeFormat();
+const { t, locale, setLocale, locales } = useI18n();
 
 const maskedKey = computed(() => {
   const key = localStorage.getItem("xmr_api_key") || "";
-  return key ? key.slice(0, 8) + "..." + key.slice(-4) : "Not set";
+  return key ? key.slice(0, 8) + "..." + key.slice(-4) : t("settings.notSet");
 });
 
 const datetimeFormat = ref("YYYY-MM-DD HH:mm:ss");
@@ -135,6 +166,11 @@ function handleLogout() {
   router.push("/");
 }
 
+function onLocaleChange(event: Event) {
+  const code = (event.target as HTMLSelectElement).value as LocaleCode;
+  setLocale(code);
+}
+
 async function updateDatetimeFormat() {
   formatError.value = "";
   savingFormat.value = true;
@@ -142,7 +178,7 @@ async function updateDatetimeFormat() {
     const pattern = await updateFormat(datetimeFormat.value.trim());
     datetimeFormat.value = pattern;
   } catch (err: any) {
-    formatError.value = err.response?.data?.detail || "Failed to update format";
+    formatError.value = err.response?.data?.detail || t("common.failedUpdateFormat");
   } finally {
     savingFormat.value = false;
   }

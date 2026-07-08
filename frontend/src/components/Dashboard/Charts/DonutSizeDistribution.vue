@@ -4,7 +4,7 @@
       <div class="flex items-center gap-2">
         <PieChart class="w-5 h-5 text-orange-500" />
         <h3 class="text-lg font-semibold text-gray-900">
-          Donation Size Segmentation
+          {{ t("charts.donationSize") }}
         </h3>
       </div>
 
@@ -34,7 +34,7 @@
       v-else-if="transactions.length === 0"
       class="h-48 flex items-center justify-center text-gray-400"
     >
-      No transaction data available yet
+      {{ t("charts.noData") }}
     </div>
 
     <template v-else>
@@ -54,15 +54,15 @@
               :style="{ backgroundColor: tier.color }"
             />
             <span class="text-sm font-medium text-gray-900">
-              {{ tier.name }}
+              {{ t(`tier.${tier.key}`) }}
             </span>
           </div>
-          <span class="text-xs text-gray-500">{{ tier.label }}</span>
+          <span class="text-xs text-gray-500">{{ t(`tierDesc.${tier.key}`) }}</span>
           <span class="text-sm font-semibold text-gray-900">
             {{ tier.percentage }}%
           </span>
           <span class="text-xs text-gray-400">
-            ({{ tier.count }} donation{{ tier.count !== 1 ? "s" : "" }})
+            ({{ t("charts.donations", { count: tier.count }) }})
           </span>
         </div>
       </div>
@@ -88,9 +88,9 @@ import type {
 } from "@/composables/useTransactionAggregation";
 import {
   useTransactionAggregation,
-  SIZE_TIERS,
 } from "@/composables/useTransactionAggregation";
 import { useChartPreferences } from "@/composables/useChartPreferences";
+import { useI18n } from "@/composables/useI18n";
 import { formatXmr } from "@/lib/format";
 
 ChartJS.register(ArcElement, Tooltip, DoughnutController);
@@ -100,13 +100,6 @@ const TIER_COLORS: Record<SizeTier, string> = {
   medium: "#FF6600",
   large: "#c2410c",
   whale: "#7c2d12",
-};
-
-const TIER_NAMES: Record<SizeTier, string> = {
-  micro: "Micro",
-  medium: "Medium",
-  large: "Large",
-  whale: "Whale",
 };
 
 const TIER_ORDER: SizeTier[] = ["micro", "medium", "large", "whale"];
@@ -123,6 +116,7 @@ const intervalOptions: { value: TimeInterval; label: string }[] = [
 ];
 
 const { sizeInterval: selectedInterval } = useChartPreferences();
+const { t } = useI18n();
 
 const transactionsRef = computed(() => props.transactions);
 const { sizeData } = useTransactionAggregation(transactionsRef);
@@ -130,7 +124,7 @@ const { sizeData } = useTransactionAggregation(transactionsRef);
 const chartData = computed(() => {
   const data = sizeData(selectedInterval.value).value;
   return {
-    labels: TIER_ORDER.map((t) => TIER_NAMES[t]),
+    labels: TIER_ORDER.map((tier) => t(`tier.${tier}`)),
     datasets: [
       {
         data: TIER_ORDER.map((t) => data[t].count),
@@ -153,7 +147,7 @@ const chartOptions = computed(() => ({
         label: (ctx: any) => {
           const tier = TIER_ORDER[ctx.dataIndex];
           const data = sizeData(selectedInterval.value).value;
-          return `${TIER_NAMES[tier]}: ${data[tier].count} donations (${formatXmr(data[tier].total)} XMR)`;
+          return `${t(`tier.${tier}`)}: ${data[tier].count} ${t("charts.donations", { count: data[tier].count })} (${formatXmr(data[tier].total)} XMR)`;
         },
       },
     },
@@ -163,13 +157,13 @@ const chartOptions = computed(() => ({
 const tiers = computed(() => {
   const data = sizeData(selectedInterval.value).value;
   const total = TIER_ORDER.reduce((sum, t) => sum + data[t].count, 0);
-  return TIER_ORDER.map((t) => ({
-    key: t,
-    name: TIER_NAMES[t],
-    label: SIZE_TIERS[t].label,
-    color: TIER_COLORS[t],
-    count: data[t].count,
-    percentage: total > 0 ? ((data[t].count / total) * 100).toFixed(1) : "0.0",
+  return TIER_ORDER.map((tierKey) => ({
+    key: tierKey,
+    name: t(`tier.${tierKey}`),
+    label: t(`tierDesc.${tierKey}`),
+    color: TIER_COLORS[tierKey],
+    count: data[tierKey].count,
+    percentage: total > 0 ? ((data[tierKey].count / total) * 100).toFixed(1) : "0.0",
   }));
 });
 </script>

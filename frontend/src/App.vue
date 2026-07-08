@@ -18,7 +18,7 @@
             >
               <div class="flex items-center space-x-1">
                 <Newspaper :size="16" />
-                <span>News</span>
+                <span>{{ t("nav.news") }}</span>
               </div>
             </router-link>
             <router-link
@@ -31,7 +31,7 @@
             >
               <div class="flex items-center space-x-1">
                 <Wallet :size="16" />
-                <span>Wallets</span>
+                <span>{{ t("nav.wallets") }}</span>
               </div>
             </router-link>
             <router-link
@@ -44,16 +44,16 @@
             >
               <div class="flex items-center space-x-1">
                 <Settings :size="16" />
-                <span>Settings</span>
+                <span>{{ t("nav.settings") }}</span>
               </div>
             </router-link>
             <button
-              class="text-gray-400 hover:text-red-400 text-sm ml-4 transition-colors flex items-center space-x-1"
-              title="Disconnect"
+              class="text-gray-400 hover:text-red-400 text-sm ml-2 transition-colors flex items-center space-x-1"
+              :title="t('nav.disconnect')"
               @click="handleLogout"
             >
               <LogOut :size="14" />
-              <span>Disconnect</span>
+              <span>{{ t("nav.disconnect") }}</span>
             </button>
           </div>
         </div>
@@ -77,9 +77,11 @@ import { computed } from "vue";
 import { useRouter } from "vue-router";
 import { Landmark, Settings, Wallet, LogOut, Newspaper } from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
+import { useI18n } from "@/composables/useI18n";
 
 const router = useRouter();
 const store = useFundStore();
+const { t } = useI18n();
 const apiKeySet = computed(() => store.apiKeySet);
 
 function handleLogout() {

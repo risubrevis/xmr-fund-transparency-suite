@@ -8,6 +8,7 @@ logger = get_logger("app.settings")
 
 DEFAULT_SETTINGS = {
     "datetime_format": "YYYY-MM-DD HH:mm:ss",
+    "locale": "en",
 }
 
 SETTINGS_FILE_PATH = os.environ.get("SETTINGS_FILE_PATH", "settings.json")
@@ -58,3 +59,25 @@ def set_datetime_format(format_str: str) -> str:
     settings["datetime_format"] = format_str
     save_settings(settings)
     return format_str
+
+
+def get_locale() -> str:
+    """Get the configured UI locale code."""
+    return load_settings().get("locale", DEFAULT_SETTINGS["locale"])
+
+
+def set_locale(locale_code: str) -> str:
+    """Persist the UI locale code."""
+    settings = load_settings()
+    settings["locale"] = locale_code
+    save_settings(settings)
+    return locale_code
+
+
+def ensure_locale_default() -> None:
+    """Write the default locale into settings.json if the key is missing."""
+    settings = load_settings()
+    if "locale" not in settings:
+        settings["locale"] = DEFAULT_SETTINGS["locale"]
+        save_settings(settings)
+        logger.info("locale_default_written", locale=DEFAULT_SETTINGS["locale"])

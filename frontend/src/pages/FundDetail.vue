@@ -3,31 +3,31 @@
     <!-- Loading -->
     <div v-if="loading" class="text-center py-16">
       <Loader2 class="mx-auto animate-spin text-monero-orange" :size="40" />
-      <p class="text-gray-600 mt-4">Loading fund data...</p>
+      <p class="text-gray-600 mt-4">{{ t("funddetail.loading") }}</p>
     </div>
 
     <!-- Error -->
     <div v-else-if="error" class="text-center py-16">
       <AlertTriangle class="mx-auto text-amber-500" :size="40" />
       <h2 class="text-xl font-bold text-gray-900 mt-4 mb-2">
-        Error Loading Fund
+        {{ t("funddetail.errorTitle") }}
       </h2>
       <p class="text-gray-600 mb-4">{{ error }}</p>
-      <Button variant="default" @click="retryLoad">Retry</Button>
+      <Button variant="default" @click="retryLoad">{{ t("common.retry") }}</Button>
     </div>
 
     <!-- Fund not found -->
     <div v-else-if="!fund" class="text-center py-16">
       <Wallet class="mx-auto text-gray-400" :size="48" />
-      <h2 class="text-2xl font-bold text-gray-900 mt-4 mb-2">Fund Not Found</h2>
+      <h2 class="text-2xl font-bold text-gray-900 mt-4 mb-2">{{ t("funddetail.notFoundTitle") }}</h2>
       <p class="text-gray-600 mb-6">
-        The fund you are looking for does not exist or you don't have access.
+        {{ t("funddetail.notFoundDesc") }}
       </p>
       <router-link to="/wallets">
         <Button variant="default">
           <div class="flex items-center space-x-2">
             <ArrowLeft :size="18" />
-            <span>Back to Wallets</span>
+            <span>{{ t("funddetail.backToWallets") }}</span>
           </div>
         </Button>
       </router-link>
@@ -41,17 +41,17 @@
           to="/wallets"
           class="hover:text-monero-orange transition-colors"
         >
-          Wallets
+          {{ t("nav.wallets") }}
         </router-link>
         <ChevronRight :size="14" />
         <router-link
           :to="`/wallets/${walletUuid}`"
           class="hover:text-monero-orange transition-colors"
         >
-          Wallet Settings
+          {{ t("walletdetail.walletSettings") }}
         </router-link>
         <ChevronRight :size="14" />
-        <span class="text-gray-900 font-medium">Fund Settings</span>
+        <span class="text-gray-900 font-medium">{{ t("funddetail.fundSettings") }}</span>
       </nav>
 
       <!-- Section 1: Fund Settings Card -->
@@ -59,7 +59,7 @@
         <div class="flex items-center justify-between mb-6">
           <div class="flex items-center space-x-2">
             <Landmark :size="20" class="text-monero-orange flex-shrink-0" />
-            <h2 class="text-lg font-semibold text-gray-900">Fund Settings</h2>
+            <h2 class="text-lg font-semibold text-gray-900">{{ t("funddetail.fundSettings") }}</h2>
           </div>
           <button
             :disabled="togglingActive"
@@ -79,7 +79,7 @@
             <template v-else>
               <Check v-if="fund.is_active" :size="12" class="mr-1" />
               <X v-else :size="12" class="mr-1" />
-              {{ fund.is_active ? "Active" : "Inactive" }}
+              {{ fund.is_active ? t("common.active") : t("common.inactive") }}
             </template>
           </button>
         </div>
@@ -91,7 +91,7 @@
               for="fund-label"
               class="block text-sm font-medium text-gray-700 mb-1"
             >
-              Label
+              {{ t("fund.label") }}
               <span class="text-red-500">*</span>
             </label>
             <input
@@ -100,7 +100,7 @@
               type="text"
               required
               class="w-full h-9 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm"
-              placeholder="My Fundraiser"
+              :placeholder="t('fund.labelPh2')"
             />
           </div>
 
@@ -110,15 +110,15 @@
               for="fund-description"
               class="block text-sm font-medium text-gray-700 mb-1"
             >
-              Description
-              <span class="text-gray-400 text-xs ml-1">(optional)</span>
+              {{ t("common.description") }}
+              <span class="text-gray-400 text-xs ml-1">({{ t("common.optional") }})</span>
             </label>
             <textarea
               id="fund-description"
               v-model="form.description"
               rows="3"
               class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
-              placeholder="Describe the purpose of this fund..."
+              :placeholder="t('fund.descriptionPh2')"
             ></textarea>
           </div>
 
@@ -128,7 +128,7 @@
               for="fund-deposit-address"
               class="block text-sm font-medium text-gray-700 mb-1"
             >
-              Deposit Address
+              {{ t("fund.depositAddress") }}
               <span class="text-red-500">*</span>
             </label>
             <div class="flex items-center space-x-2">
@@ -138,12 +138,12 @@
                 type="text"
                 required
                 class="flex-1 h-9 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm font-mono"
-                placeholder="86erTZz..."
+                :placeholder="t('fund.depositAddressPh2')"
               />
               <button
                 type="button"
                 class="text-gray-400 hover:text-monero-orange transition-colors flex-shrink-0"
-                title="Copy address"
+                :title="t('common.copyAddress')"
                 @click="copyDepositAddress"
               >
                 <Copy :size="16" />
@@ -152,12 +152,11 @@
                 v-if="copiedAddress"
                 class="text-xs text-green-600 flex-shrink-0"
               >
-                Copied!
+                {{ t("common.copied") }}
               </span>
             </div>
             <p class="text-xs text-gray-500 mt-1">
-              Changing the deposit address will trigger a full rescan of the
-              blockchain.
+              {{ t("funddetail.depositAddressHint") }}
             </p>
           </div>
 
@@ -167,15 +166,15 @@
               for="fund-target"
               class="block text-sm font-medium text-gray-700 mb-1"
             >
-              Target Amount (XMR)
-              <span class="text-gray-400 text-xs ml-1">(optional)</span>
+              {{ t("fund.targetAmount") }}
+              <span class="text-gray-400 text-xs ml-1">({{ t("common.optional") }})</span>
             </label>
             <input
               id="fund-target"
               v-model="form.target_amount_xmr"
               type="text"
               class="w-full h-9 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm"
-              placeholder="e.g. 100.00"
+              :placeholder="t('fund.targetAmountPh2')"
             />
           </div>
 
@@ -185,18 +184,18 @@
               for="fund-website"
               class="block text-sm font-medium text-gray-700 mb-1"
             >
-              Public Website
-              <span class="text-gray-400 text-xs ml-1">(optional)</span>
+              {{ t("fund.publicWebsite") }}
+              <span class="text-gray-400 text-xs ml-1">({{ t("common.optional") }})</span>
             </label>
             <input
               id="fund-website"
               v-model="form.public_website"
               type="text"
               class="w-full h-9 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-monero-orange focus:border-monero-orange text-sm"
-              placeholder="example.com"
+              :placeholder="t('fund.websitePh')"
             />
             <p class="text-xs text-gray-500 mt-1">
-              Enter without https:// — e.g. example.com
+              {{ t("funddetail.websiteHint") }}
             </p>
           </div>
 
@@ -204,7 +203,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                Widget Background Color
+                {{ t("fund.widgetBgColor") }}
               </label>
               <div class="flex items-center space-x-2">
                 <input
@@ -229,7 +228,7 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                Widget Text Color
+                {{ t("fund.widgetTextColor") }}
               </label>
               <div class="flex items-center space-x-2">
                 <input
@@ -274,14 +273,14 @@
             >
               <div class="flex items-center space-x-1.5">
                 <Trash2 :size="14" />
-                <span>Delete Fund</span>
+                <span>{{ t("common.deleteFund") }}</span>
               </div>
             </Button>
             <Button type="submit" variant="default" :disabled="savingFund">
               <div class="flex items-center space-x-2">
                 <Loader2 v-if="savingFund" :size="16" class="animate-spin" />
                 <Save v-else :size="16" />
-                <span>{{ savingFund ? "Saving..." : "Save Changes" }}</span>
+                <span>{{ savingFund ? t("common.saving") : t("common.saveChanges") }}</span>
               </div>
             </Button>
           </div>
@@ -292,7 +291,7 @@
       <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold text-gray-900">
-            Widget Preview & Embed
+            {{ t("funddetail.widgetPreview") }}
           </h3>
           <div class="relative">
             <Button
@@ -302,7 +301,7 @@
               @click="showPngDropdown = !showPngDropdown"
             >
               <Download :size="14" />
-              Print to PNG
+              {{ t("funddetail.printPng") }}
               <ChevronDown :size="12" />
             </Button>
             <div
@@ -314,7 +313,7 @@
                 class="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
                 @click="showPngDropdown = false"
               >
-                <span>Business Card</span>
+                <span>{{ t("funddetail.businessCard") }}</span>
                 <span class="text-xs text-gray-400">85.6 × 54 mm</span>
               </a>
               <a
@@ -322,7 +321,7 @@
                 class="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
                 @click="showPngDropdown = false"
               >
-                <span>Wide</span>
+                <span>{{ t("funddetail.wide") }}</span>
                 <span class="text-xs text-gray-400">190 × 65 mm</span>
               </a>
               <a
@@ -330,15 +329,14 @@
                 class="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
                 @click="showPngDropdown = false"
               >
-                <span>Vertical</span>
+                <span>{{ t("funddetail.vertical") }}</span>
                 <span class="text-xs text-gray-400">80 × 130 mm</span>
               </a>
             </div>
           </div>
         </div>
         <p class="text-sm text-gray-600 mb-4">
-          This widget shows your fund publicly. Anyone with the link can view
-          it.
+          {{ t("funddetail.widgetDesc") }}
         </p>
 
         <!-- Live preview card -->
@@ -348,7 +346,7 @@
               class="mx-auto animate-spin text-monero-orange"
               :size="24"
             />
-            <p class="text-gray-500 mt-2 text-sm">Loading widget data...</p>
+            <p class="text-gray-500 mt-2 text-sm">{{ t("funddetail.loadingWidget") }}</p>
           </div>
           <div
             v-else-if="widgetData"
@@ -377,8 +375,8 @@
                 </div>
                 <div v-if="widgetData.target_amount_xmr" class="mt-1 mb-2">
                   <div class="text-xs opacity-80 mb-1">
-                    Target: {{ widgetData.target_amount_xmr }} XMR
-                  </div>
+                      {{ t("fundcard.target") }}: {{ widgetData.target_amount_xmr }} XMR
+                    </div>
                   <div
                     class="w-full rounded-full h-2"
                     :style="{ background: trackColor }"
@@ -396,7 +394,7 @@
                   class="flex items-center space-x-1 text-xs opacity-80 mt-2"
                 >
                   <Clock :size="12" />
-                  <span>Updated: {{ widgetData.last_updated }}</span>
+                  <span>{{ t("funddetail.updated") }} {{ widgetData.last_updated }}</span>
                 </div>
                 <!-- Export buttons inside widget -->
                 <div class="flex flex-wrap gap-1.5 mt-3">
@@ -469,7 +467,7 @@
                   }"
                   @click="copyDepositAddress"
                 >
-                  {{ copiedAddress ? "Copied!" : "Copy Address" }}
+                  {{ copiedAddress ? t("common.copied") : t("funddetail.copyAddress") }}
                 </button>
               </div>
             </div>
@@ -515,7 +513,7 @@
                   class="flex items-center gap-1"
                 >
                   <Newspaper :size="13" />
-                  News
+                  {{ t("funddetail.news") }}
                   <span
                     v-if="freshPostsCount > 0"
                     style="
@@ -541,19 +539,19 @@
                   v-if="newsLoading"
                   class="text-center py-2 opacity-70 text-xs"
                 >
-                  Loading...
+                  {{ t("funddetail.loadingNews") }}
                 </div>
                 <div
                   v-else-if="newsError"
                   class="text-center py-2 opacity-70 text-xs"
                 >
-                  Failed to load news
+                  {{ t("funddetail.failedNews") }}
                 </div>
                 <div
                   v-else-if="widgetPosts.length === 0"
                   class="text-center py-2 opacity-60 text-xs"
                 >
-                  No news yet
+                  {{ t("funddetail.noNews") }}
                 </div>
                 <div v-else>
                   <div
@@ -594,7 +592,7 @@
                     }"
                     @click="loadMorePosts"
                   >
-                    {{ loadingMore ? "Loading..." : "Load more" }}
+                    {{ loadingMore ? t("common.loading") : t("funddetail.loadMore") }}
                   </button>
                 </div>
               </div>
@@ -604,14 +602,14 @@
 
         <!-- Embed code -->
         <div class="mb-6">
-          <p class="text-sm font-medium text-gray-700 mb-2">Embed Code</p>
+          <p class="text-sm font-medium text-gray-700 mb-2">{{ t("funddetail.embedCode") }}</p>
           <div class="relative">
             <pre
               class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto"
             ><code>{{ embedCode }}</code></pre>
             <button
               class="absolute top-2 right-2 text-gray-400 hover:text-white transition-colors"
-              title="Copy embed code"
+              :title="t('common.copyEmbedCode')"
               @click="copyEmbedCode"
             >
               <Copy :size="14" />
@@ -620,21 +618,21 @@
               v-if="copiedEmbed"
               class="absolute top-2 right-10 text-xs text-green-400"
             >
-              Copied!
+              {{ t("common.copied") }}
             </span>
           </div>
         </div>
 
         <!-- Widget JSON URL -->
         <div class="mb-6">
-          <p class="text-sm font-medium text-gray-700 mb-2">Widget JSON URL</p>
+          <p class="text-sm font-medium text-gray-700 mb-2">{{ t("funddetail.widgetJsonUrl") }}</p>
           <div class="relative">
             <pre
               class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto"
             ><code>{{ widgetJsonUrl }}</code></pre>
             <button
               class="absolute top-2 right-2 text-gray-400 hover:text-white transition-colors"
-              title="Copy URL"
+              :title="t('common.copyUrl')"
               @click="copyJsonUrl"
             >
               <Copy :size="14" />
@@ -643,7 +641,7 @@
               v-if="copiedJsonUrl"
               class="absolute top-2 right-10 text-xs text-green-400"
             >
-              Copied!
+              {{ t("common.copied") }}
             </span>
           </div>
         </div>
@@ -651,8 +649,7 @@
         <p class="text-xs text-gray-500 flex items-center space-x-1">
           <AlertCircle :size="12" />
           <span
-            >The widget is cached for 60 seconds and rate-limited to 60 requests
-            per minute per IP.</span
+            >{{ t("funddetail.widgetCacheNote") }}</span
           >
         </p>
       </div>
@@ -661,37 +658,37 @@
     <!-- Delete confirmation modal -->
     <ConfirmDialog
       :open="showDeleteModal"
-      title="Delete Fund"
-      subtitle="This action cannot be undone."
+      :title="t('funddetail.deleteTitle')"
+      :subtitle="t('funddetail.deleteSubtitle')"
       :loading="deletingFund"
-      confirm-text="Delete Fund"
-      loading-text="Deleting..."
+      :cancel-text="t('common.cancel')"
+      :confirm-text="t('common.deleteFund')"
+      :loading-text="t('common.deleting')"
       @confirm="deleteFund"
       @cancel="showDeleteModal = false"
     >
-      Are you sure you want to delete
-      <strong>{{ fund?.label }}</strong
-      >? All associated transactions and posts will be permanently removed.
+      {{ t("funddetail.deleteMsg", { label: fund?.label ?? "" }) }}
     </ConfirmDialog>
 
     <!-- Toggle active confirmation modal -->
     <ConfirmDialog
       :open="showToggleModal"
-      :title="fund?.is_active ? 'Deactivate Fund' : 'Activate Fund'"
+      :title="fund?.is_active ? t('funddetail.deactivateFund') : t('funddetail.activateFund')"
       :subtitle="
         fund?.is_active
-          ? 'This will stop tracking new transactions.'
-          : 'This will resume tracking new transactions.'
+          ? t('funddetail.deactivateSubtitle')
+          : t('funddetail.activateSubtitle')
       "
       :message="
         fund?.is_active
-          ? 'Are you sure you want to deactivate this fund? It will no longer appear in public widgets or receive scan updates.'
-          : 'Are you sure you want to activate this fund? It will resume appearing in public widgets and receiving scan updates.'
+          ? t('funddetail.deactivateMsg')
+          : t('funddetail.activateMsg')
       "
       :loading="togglingActive"
+      :cancel-text="t('common.cancel')"
       :confirm-variant="fund?.is_active ? 'destructive' : 'default'"
-      :confirm-text="fund?.is_active ? 'Deactivate' : 'Activate'"
-      :loading-text="fund?.is_active ? 'Deactivating...' : 'Activating...'"
+      :confirm-text="fund?.is_active ? t('common.deactivate') : t('common.activate')"
+      :loading-text="fund?.is_active ? t('common.deactivating') : t('common.activating')"
       :icon-bg-class="fund?.is_active ? 'bg-red-100' : 'bg-green-100'"
       :icon-text-class="fund?.is_active ? 'text-red-600' : 'text-green-600'"
       @confirm="confirmToggleActive"
@@ -734,10 +731,12 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { fundsApi, walletsApi, type Fund } from "@/lib/api";
 import { useDatetimeFormat } from "@/composables/useDatetimeFormat";
+import { useI18n } from "@/composables/useI18n";
 
 const route = useRoute();
 const router = useRouter();
 const { loadFormat } = useDatetimeFormat();
+const { t } = useI18n();
 
 // Route params
 const walletUuid = computed(() => route.params.walletUuid as string);

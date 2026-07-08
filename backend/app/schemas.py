@@ -285,6 +285,18 @@ class DateTimeFormatResponse(BaseModel):
     pattern: str
 
 
+class LocaleUpdate(BaseModel):
+    """Request body for updating the UI locale."""
+
+    locale: str
+
+
+class LocaleResponse(BaseModel):
+    """Response for the locale setting."""
+
+    locale: str
+
+
 class PostCreate(BaseModel):
     """Request body for creating a new post."""
 

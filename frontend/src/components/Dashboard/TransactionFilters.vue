@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between">
       <h3 class="text-sm font-semibold text-gray-900 flex items-center gap-2">
         <Filter :size="16" class="text-monero-orange" />
-        Filters &amp; Sorting
+        {{ t("filters.title") }}
       </h3>
       <button
         v-if="hasActiveFilters"
@@ -11,7 +11,7 @@
         @click="$emit('reset')"
       >
         <RotateCcw :size="12" />
-        Reset Filters
+        {{ t("filters.reset") }}
       </button>
     </div>
 
@@ -22,7 +22,7 @@
           class="block text-xs font-medium text-gray-600 mb-1"
           for="filter-start-date"
         >
-          Start Date
+          {{ t("filters.startDate") }}
         </label>
         <input
           id="filter-start-date"
@@ -37,7 +37,7 @@
           class="block text-xs font-medium text-gray-600 mb-1"
           for="filter-end-date"
         >
-          End Date
+          {{ t("filters.endDate") }}
         </label>
         <input
           id="filter-end-date"
@@ -56,7 +56,7 @@
     <!-- Amount Tier Multi-select -->
     <div>
       <label class="block text-xs font-medium text-gray-600 mb-2">
-        Amount Tier
+        {{ t("filters.amountTier") }}
       </label>
       <div class="flex flex-wrap gap-2">
         <button
@@ -71,8 +71,8 @@
           @click="$emit('toggleTier', tier.value)"
         >
           <Check v-if="selectedTiers.includes(tier.value)" :size="12" />
-          <span>{{ tier.label }}</span>
-          <span class="opacity-70">{{ tier.description }}</span>
+          <span>{{ t(`tier.${tier.value}`) }}</span>
+          <span class="opacity-70">{{ t(`tierDesc.${tier.value}`) }}</span>
         </button>
       </div>
     </div>
@@ -80,18 +80,18 @@
     <!-- Multi-Sort -->
     <div>
       <div class="flex items-center justify-between mb-2">
-        <label class="text-xs font-medium text-gray-600">Sort By</label>
+        <label class="text-xs font-medium text-gray-600">{{ t("filters.sortBy") }}</label>
         <button
           v-if="sortRules.length < 3"
           class="text-xs text-monero-orange hover:underline flex items-center gap-1 cursor-pointer"
           @click="$emit('addSort')"
         >
           <Plus :size="12" />
-          Add Sort
+          {{ t("filters.addSort") }}
         </button>
       </div>
       <div v-if="sortRules.length === 0" class="text-xs text-gray-400 italic">
-        No sorting applied (default: block height descending)
+        {{ t("filters.noSorting") }}
       </div>
       <div class="space-y-2">
         <div
@@ -111,7 +111,7 @@
               :key="field.value"
               :value="field.value"
             >
-              {{ field.label }}
+              {{ t(`sortField.${field.value}`) }}
             </option>
           </select>
           <select
@@ -125,8 +125,8 @@
               )
             "
           >
-            <option value="desc">Descending</option>
-            <option value="asc">Ascending</option>
+            <option value="desc">{{ t("filters.descending") }}</option>
+            <option value="asc">{{ t("filters.ascending") }}</option>
           </select>
           <button
             class="text-gray-400 hover:text-red-500 cursor-pointer p-1"
@@ -151,6 +151,9 @@ import {
 } from "@lucide/vue";
 import { TIER_OPTIONS, SORTABLE_FIELDS } from "@/lib/api";
 import type { SortRule } from "@/lib/api";
+import { useI18n } from "@/composables/useI18n";
+
+const { t } = useI18n();
 
 defineProps<{
   startDate: string;

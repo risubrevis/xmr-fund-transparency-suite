@@ -267,6 +267,11 @@ export const settingsApi = {
 
   updateDatetimeFormat: (pattern: string) =>
     api.put("/api/v1/settings/datetime-format", { pattern }),
+
+  getLocale: () => api.get<{ locale: string }>("/api/v1/settings/locale"),
+
+  setLocale: (locale: string) =>
+    api.put<{ locale: string }>("/api/v1/settings/locale", { locale }),
 };
 
 /**

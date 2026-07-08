@@ -10,6 +10,7 @@ import WalletDetail from "./pages/WalletDetail.vue";
 import FundDetail from "./pages/FundDetail.vue";
 import { useFundStore } from "./stores/fund";
 import { isApiKeySet } from "./lib/api";
+import { bootstrapLocale } from "./i18n";
 import "./assets/main.css";
 
 const router = createRouter({
@@ -64,5 +65,8 @@ app.use(router);
 // Initialize store — load fund data if API key exists
 const store = useFundStore();
 store.init();
+
+// Resolve UI locale: localStorage first, then settings.json via backend.
+bootstrapLocale();
 
 app.mount("#app");

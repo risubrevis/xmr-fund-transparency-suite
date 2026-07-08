@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-4">
       <div class="flex items-center gap-2">
         <Target class="w-5 h-5 text-orange-500" />
-        <h3 class="text-lg font-semibold text-gray-900">Goal &amp; Progress</h3>
+        <h3 class="text-lg font-semibold text-gray-900">{{ t("charts.goalProgress") }}</h3>
       </div>
       <div v-if="hasTarget && !loading" class="flex gap-1">
         <Button
@@ -12,7 +12,7 @@
           :class="viewMode === 'bar' ? 'bg-gray-100' : ''"
           @click="viewMode = 'bar'"
         >
-          Bar
+          {{ t("charts.bar") }}
         </Button>
         <Button
           variant="outline"
@@ -20,7 +20,7 @@
           :class="viewMode === 'gauge' ? 'bg-gray-100' : ''"
           @click="viewMode = 'gauge'"
         >
-          Gauge
+          {{ t("charts.gauge") }}
         </Button>
       </div>
     </div>
@@ -34,12 +34,10 @@
       class="h-48 flex flex-col items-center justify-center text-gray-400 text-center"
     >
       <p class="text-sm max-w-xs">
-        No target funding goal is currently configured for this fund. You can
-        set one up in
+        {{ t("charts.noTargetConfigured") }}
         <router-link to="/settings" class="text-orange-500 hover:underline">
-          Settings
-        </router-link>
-        .
+          {{ t("charts.noTargetSettingsLink") }}
+        </router-link>{{ t("charts.noTargetSuffix") }}
       </p>
     </div>
 
@@ -98,6 +96,7 @@ import {
 import { Target, Loader2 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
 import { useChartPreferences } from "@/composables/useChartPreferences";
+import { useI18n } from "@/composables/useI18n";
 import { formatXmr } from "@/lib/format";
 
 ChartJS.register(ArcElement, Tooltip, DoughnutController);
@@ -109,6 +108,7 @@ const props = defineProps<{
 }>();
 
 const { goalViewMode } = useChartPreferences();
+const { t } = useI18n();
 
 const viewMode = goalViewMode;
 
@@ -130,7 +130,7 @@ const displayPercent = computed(() => {
 });
 
 const gaugeData = computed(() => ({
-  labels: ["Received", "Remaining"],
+  labels: [t("charts.received"), t("charts.remaining")],
   datasets: [
     {
       data: [

@@ -2,7 +2,7 @@
   <div>
     <!-- Preset Colors -->
     <div class="mb-4">
-      <p class="text-sm font-medium text-gray-700 mb-2">Preset Colors</p>
+      <p class="text-sm font-medium text-gray-700 mb-2">{{ t("colorpicker.presets") }}</p>
       <div class="flex flex-wrap gap-3">
         <button
           v-for="preset in presets"
@@ -22,7 +22,7 @@
 
     <!-- Hue Slider -->
     <div class="mb-4">
-      <p class="text-sm font-medium text-gray-700 mb-2">Hue</p>
+      <p class="text-sm font-medium text-gray-700 mb-2">{{ t("colorpicker.hue") }}</p>
       <div class="relative">
         <input
           type="range"
@@ -45,7 +45,7 @@
         for="hex-input"
         class="block text-sm font-medium text-gray-700 mb-2"
       >
-        Hex Color
+        {{ t("colorpicker.hexColor") }}
       </label>
       <div class="flex items-center gap-3">
         <div
@@ -70,6 +70,7 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
+import { useI18n } from "@/composables/useI18n";
 
 const props = withDefaults(
   defineProps<{
@@ -91,6 +92,8 @@ const props = withDefaults(
     placeholder: "#667eea",
   },
 );
+
+const { t } = useI18n();
 
 const emit = defineEmits<{
   "update:modelValue": [value: string];
@@ -186,7 +189,7 @@ function onHexInput(event: Event) {
 function onHexBlur() {
   const val = hexInput.value.trim();
   if (!/^#[0-9a-fA-F]{6}$/.test(val)) {
-    hexError.value = "Invalid hex color. Use format: #aabbcc";
+    hexError.value = t("colorpicker.invalidHex");
   } else {
     hexError.value = "";
     const normalized = val.toLowerCase();
