@@ -33,6 +33,12 @@ RELEASE_BASE="https://github.com/${GITHUB_REPO}/releases/download"
 
 # Files/dirs preserved across the code swap. Everything else is replaced with
 # the freshly downloaded release tree.
+#
+# NOTE: the bind-mount data dirs (postgres/, redis/, monero-wallet-rpc/) are
+# created and owned by the containers (e.g. UID 999 for postgres/redis), not by
+# the host user running this script. Moving them across the directory swap and
+# removing the superseded tree therefore needs root privileges — see
+# ensure_sudo_for_data() and the sudo-retry logic in deploy_version().
 PRESERVE=(.env .deploy-version .deploy-previous data postgres redis monero-wallet-rpc backups .git)
 
 VERSION_FILE=".deploy-version"
@@ -247,6 +253,44 @@ wait_health() {
     fi
 }
 
+# ── sudo for container-owned data dirs ───────────────────────────────────────
+# The bind-mount data directories (postgres/, redis/, monero-wallet-rpc/) are
+# owned by container UIDs (e.g. 999), not by the host user running this script.
+# They cannot be moved or removed with normal permissions, so we need root.
+# This prompts for the password ONCE (caching it via `sudo -v`) before the swap,
+# so the rest of the update can use non-interactive `sudo -n` without hanging.
+ensure_sudo_for_data() {
+    local need=0 item
+    for item in postgres redis monero-wallet-rpc; do
+        # -O is true when the current user owns the entry. Container data dirs
+        # are owned by service UIDs, so ! -O means we need root to move them.
+        if [[ -e "$item" ]] && [[ ! -O "$item" ]]; then
+            need=1
+        fi
+    done
+    [[ "$need" -eq 0 ]] && return 0
+
+    echo ""
+    warn "Docker data directories (postgres/, redis/, monero-wallet-rpc/) are owned"
+    warn "by container users, not by '${USER:-$(id -un)}'."
+    echo ""
+    info "sudo is required ONLY to handle those container-owned files, specifically:"
+    info "  • move your database + wallet data across the version swap (preserve it),"
+    info "  • remove the previous version's directory once the update succeeds."
+    info "No application code is modified with sudo."
+    echo ""
+    if ! sudo -v; then
+        error "sudo authentication failed. Cannot preserve container-owned data."
+        info "Re-run as a user with sudo access, or fix the directory ownership"
+        info "('sudo chown -R $(id -u):$(id -g) postgres redis monero-wallet-rpc'),"
+        info "then run this update again."
+        return 1
+    fi
+    SUDO_AVAILABLE=1
+    ok "sudo credentials cached for this update."
+    return 0
+}
+
 # ── Deploy a given release tag ──────────────────────────────────────────────
 # Shared by update and rollback. Downloads + extracts the archive, stops
 # containers, swaps the code directory (preserving state), rebuilds, and waits
@@ -287,6 +331,14 @@ deploy_version() {
     info "Stopping containers..."
     $COMPOSE_CMD down >/dev/null 2>&1 || warn "compose down reported an error (continuing)."
 
+    # Docker bind-mount data dirs are owned by container UIDs (e.g. 999). Moving
+    # them across the swap and removing the old tree needs root — cache sudo
+    # credentials up front (interactive prompt) before any destructive step.
+    if ! ensure_sudo_for_data; then
+        rm -rf "$staging"
+        exit 1
+    fi
+
     local old="${APP_DIR}.old.$(date +%s)"
 
     # Swap: move current dir aside, put new code in place, then carry preserved
@@ -303,12 +355,47 @@ deploy_version() {
         exit 1
     fi
 
-    local item
+    local item critical_failed=0
+    # Critical data dirs: if any of these cannot be carried over, abort BEFORE
+    # starting containers — otherwise the bind mount would point at an empty
+    # dir and the database would be silently reinitialized (data loss).
+    local critical_dirs=(postgres redis monero-wallet-rpc)
     for item in "${PRESERVE[@]}"; do
-        if [[ -e "$old/$item" ]]; then
-            mv "$old/$item" "$APP_DIR/$item" || warn "Could not preserve ${item} (kept in ${old})."
+        [[ -e "$old/$item" ]] || continue
+        if mv "$old/$item" "$APP_DIR/$item" 2>/dev/null; then
+            continue
         fi
+        # Container-owned data dirs need root to move.
+        if [[ -n "${SUDO_AVAILABLE:-}" ]] && sudo -n mv "$old/$item" "$APP_DIR/$item" 2>/dev/null; then
+            continue
+        fi
+        warn "Could not preserve ${item} (kept in ${old})."
+        local c
+        for c in "${critical_dirs[@]}"; do
+            [[ "$item" == "$c" ]] && critical_failed=1
+        done
     done
+
+    if [[ "$critical_failed" -eq 1 ]]; then
+        error "A critical data directory (postgres/redis/monero-wallet-rpc) could"
+        error "not be preserved. Aborting before containers start to avoid"
+        error "reinitializing the database."
+        # Roll the swap back: return any already-moved preserve items to $old,
+        # then restore the previous application directory.
+        for item in "${PRESERVE[@]}"; do
+            if [[ -e "$APP_DIR/$item" ]] && [[ ! -e "$old/$item" ]]; then
+                mv "$APP_DIR/$item" "$old/$item" 2>/dev/null \
+                    || { [[ -n "${SUDO_AVAILABLE:-}" ]] && sudo -n mv "$APP_DIR/$item" "$old/$item" 2>/dev/null || true; }
+            fi
+        done
+        rm -rf "$APP_DIR"
+        mv "$old" "$APP_DIR"
+        rm -rf "$staging"
+        info "The previous version is back in place; containers were not started."
+        info "A database backup is available under: backups/"
+        info "Resolve the permission issue (e.g. ensure sudo access) and re-run."
+        exit 1
+    fi
 
     # Re-enter the new application directory for the build step.
     cd "$APP_DIR"
@@ -329,8 +416,20 @@ deploy_version() {
     docker image prune -f >/dev/null 2>&1 || true
 
     # Remove the superseded tree now that the new version is up. Its persisted
-    # state has already been carried into the new tree.
-    rm -rf "$old"
+    # state has already been carried into the new tree. Some files (container
+    # data dirs, root-owned .pyc caches) need root to delete.
+    if rm -rf "$old" 2>/dev/null; then
+        :
+    else
+        warn "Could not fully remove the old version as ${USER:-$(id -un)}"
+        warn "(some files are owned by containers). Retrying with sudo."
+        if [[ -n "${SUDO_AVAILABLE:-}" ]] && sudo -n rm -rf "$old" 2>/dev/null; then
+            ok "Old version directory removed."
+        else
+            warn "Could not fully remove old version. Left at: ${old}"
+            info "Remove it manually later: sudo rm -rf ${old}"
+        fi
+    fi
 }
 
 # ── Check for updates ───────────────────────────────────────────────────────
@@ -502,6 +601,12 @@ Database migrations run automatically on backend startup.
 
 Environment:
   GITHUB_TOKEN   Optional. Raises the GitHub API rate limit if set.
+
+sudo:
+  When the bind-mount data dirs (postgres/, redis/, monero-wallet-rpc/) are
+  owned by container UIDs, the script prompts for the sudo password once and
+  uses it ONLY to move those data dirs across the swap and to remove the
+  previous version's directory. Application code is never modified with sudo.
 
 State files (in the app directory):
   .deploy-version   Currently deployed version tag
