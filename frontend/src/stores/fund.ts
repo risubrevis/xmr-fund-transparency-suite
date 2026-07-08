@@ -61,7 +61,10 @@ export const useFundStore = defineStore("fund", () => {
       }
       setApiKey(key);
       apiKeySet.value = true;
-      await loadWallets();
+      const walletList = await loadWallets();
+      if (walletList.length > 0 && currentWallet.value) {
+        await loadFunds(currentWallet.value.id);
+      }
       return true;
     } catch {
       authError.value = "Could not connect to server";
