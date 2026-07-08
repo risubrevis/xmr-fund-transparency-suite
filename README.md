@@ -9,6 +9,16 @@
   <img src="https://img.shields.io/badge/TailwindCSS-06B6D4?logo=tailwindcss&logoColor=white" alt="TailwindCSS">
 </p>
 
+<p align="center">
+  <img src="https://img.shields.io/badge/Use_Case-Donation_Tracker-FF6600?logo=monero&logoColor=white" alt="Donation Tracker">
+  <img src="https://img.shields.io/badge/Use_Case-Fundraising-9B59B6" alt="Fundraising">
+  <img src="https://img.shields.io/badge/Privacy-View--Key_Only-2ECC71" alt="View-Key Only">
+  <img src="https://img.shields.io/badge/Self--Hosted-✓-F39C12" alt="Self-Hosted">
+  <img src="https://img.shields.io/badge/Realtime-SSE-F1C40F" alt="Realtime SSE">
+  <img src="https://img.shields.io/badge/Monero--Transparency-FF6600" alt="Monero Transparency">
+  <img src="https://img.shields.io/badge/FOSS-MIT_License-3498DB" alt="FOSS MIT License">
+</p>
+
 > Self-hosted, view-only transparency tool for Monero crowdfunding, CCS milestones, and donation tracking with real-time analytics.
 
 ---
