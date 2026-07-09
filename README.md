@@ -27,9 +27,7 @@
 
 The official landing page and live tracking demonstration of this project is running at **[xmrfts.com](https://xmrfts.com)**.
 
-You can visit the live platform to inspect the open-source analytics integration, view deployment use-cases, and test the embeddable public donation widget running on top of a live Monero node.
-
-### 🧪 Live Demo Application
+## 🧪 Live Demo Application
 
 A separate, isolated demo instance is available at **[demo.xmrfts.com](https://demo.xmrfts.com)** so you can try the full admin dashboard (wallet management, fund creation, charts, exports, and widget settings).
 
