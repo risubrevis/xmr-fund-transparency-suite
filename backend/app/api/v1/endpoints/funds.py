@@ -7,6 +7,7 @@ from fastapi.responses import Response
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.v1.endpoints.widget import _generate_qr_data_url
 from app.auth import verify_api_key
 from app.database import get_db
 from app.logging import get_logger
@@ -385,3 +386,23 @@ async def download_widget_png(
             "Content-Disposition": f'attachment; filename="{filename}"',
         },
     )
+
+
+@router.get("/funds/{fund_id}/static-widget")
+async def get_static_widget(
+    fund_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    api_key: str = Depends(verify_api_key),
+) -> dict:
+    """Return the QR code data URL for the static offline widget.
+
+    The frontend assembles the full standalone HTML snippet from the fund's
+    form values plus this QR, ensuring the snippet makes zero network requests.
+    """
+    result = await db.execute(select(Fund).where(Fund.id == fund_id))
+    fund = result.scalar_one_or_none()
+    if not fund:
+        raise HTTPException(status_code=404, detail="Fund not found")
+
+    qr_data_url = _generate_qr_data_url(fund.deposit_address, size=200)
+    return {"qr_data_url": qr_data_url}

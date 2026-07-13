@@ -250,6 +250,13 @@ const uk: Messages = {
     "Зміна адреси поповнення призведе до повного повторного сканування блокчейну.",
   "funddetail.websiteHint": "Введіть без https:// — напр. example.com",
 
+  "funddetail.staticWidget": "Статичний автономний віджет",
+  "funddetail.staticWidgetDesc": "Віджет без запитів — усі дані вбудовані у сніпет. Ніяких звернень до сервера, без викриття URL вашої панелі.",
+  "funddetail.staticWidgetLoading": "Генерація QR-коду...",
+  "funddetail.staticEmbedCode": "Статичний код вставлення",
+  "funddetail.staticWidgetNote": "Цей віджет — знімок стану, він не оновлюється автоматично. Перегенеруйте його після змін, щоб відобразити найновіші налаштування фонду.",
+  "funddetail.copyStaticEmbed": "Копіювати код вставлення",
+
   "fund.label": "Назва",
   "fund.labelPh": "Назва кампанії",
   "fund.labelPh2": "Мій збір коштів",

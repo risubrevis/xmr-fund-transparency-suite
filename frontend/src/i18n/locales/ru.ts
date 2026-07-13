@@ -250,6 +250,13 @@ const ru: Messages = {
     "Изменение адреса пополнения приведёт к полному повторному сканированию блокчейна.",
   "funddetail.websiteHint": "Введите без https:// — напр. example.com",
 
+  "funddetail.staticWidget": "Статический автономный виджет",
+  "funddetail.staticWidgetDesc": "Виджет без запросов — все данные встроены в сниппет. Никаких обращений к серверу, без раскрытия URL вашей панели.",
+  "funddetail.staticWidgetLoading": "Генерация QR-кода...",
+  "funddetail.staticEmbedCode": "Статический код вставки",
+  "funddetail.staticWidgetNote": "Этот виджет — снимок состояния, он не обновляется автоматически. Перегенерируйте его после изменений, чтобы отразить последние настройки фонда.",
+  "funddetail.copyStaticEmbed": "Копировать код вставки",
+
   "fund.label": "Название",
   "fund.labelPh": "Название кампании",
   "fund.labelPh2": "Мой сбор средств",

@@ -248,6 +248,13 @@ const es: Messages = {
     "Cambiar la dirección de depósito provocará un reescaneo completo de la blockchain.",
   "funddetail.websiteHint": "Introduce sin https:// — p. ej. example.com",
 
+  "funddetail.staticWidget": "Widget Estático Sin Conexión",
+  "funddetail.staticWidgetDesc": "Un widget sin peticiones — todos los datos están integrados en el fragmento. Sin llamadas al servidor, sin exponer la URL de tu panel.",
+  "funddetail.staticWidgetLoading": "Generando código QR...",
+  "funddetail.staticEmbedCode": "Código de Inserción Estático",
+  "funddetail.staticWidgetNote": "Este widget es una instantánea — no se actualiza automáticamente. Regénéralo después de cambios para reflejar la configuración más reciente del fondo.",
+  "funddetail.copyStaticEmbed": "Copiar Código de Inserción",
+
   "fund.label": "Etiqueta",
   "fund.labelPh": "Nombre de la campaña",
   "fund.labelPh2": "Mi campaña",

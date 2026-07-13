@@ -262,6 +262,13 @@ const en: Messages = {
     "Changing the deposit address will trigger a full rescan of the blockchain.",
   "funddetail.websiteHint": "Enter without https:// — e.g. example.com",
 
+  "funddetail.staticWidget": "Static Offline Widget",
+  "funddetail.staticWidgetDesc": "A zero-request widget — all data is baked into the snippet. No server calls, no exposure of your dashboard URL.",
+  "funddetail.staticWidgetLoading": "Generating QR code...",
+  "funddetail.staticEmbedCode": "Static Embed Code",
+  "funddetail.staticWidgetNote": "This widget is a snapshot — it does not update automatically. Regenerate after changes to reflect the latest fund settings.",
+  "funddetail.copyStaticEmbed": "Copy Embed Code",
+
   // Fund form fields
   "fund.label": "Label",
   "fund.labelPh": "Campaign name",

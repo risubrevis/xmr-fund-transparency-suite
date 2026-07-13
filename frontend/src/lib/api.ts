@@ -166,6 +166,9 @@ export const fundsApi = {
 
   delete: (id: string) => api.delete(`/api/v1/funds/${id}`),
 
+  staticWidget: (id: string) =>
+    api.get<{ qr_data_url: string }>(`/api/v1/funds/${id}/static-widget`),
+
   transactions: (
     id: string,
     cursor?: string,

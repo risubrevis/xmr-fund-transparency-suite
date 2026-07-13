@@ -653,6 +653,128 @@
           >
         </p>
       </div>
+
+      <!-- Static Offline Widget -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-1">
+          {{ t("funddetail.staticWidget") }}
+        </h3>
+        <p class="text-sm text-gray-600 mb-4">
+          {{ t("funddetail.staticWidgetDesc") }}
+        </p>
+
+        <!-- Live preview -->
+        <div class="mb-6">
+          <div v-if="staticWidgetLoading" class="text-center py-8">
+            <Loader2
+              class="mx-auto animate-spin text-monero-orange"
+              :size="24"
+            />
+            <p class="text-gray-500 mt-2 text-sm">{{ t("funddetail.staticWidgetLoading") }}</p>
+          </div>
+          <div
+            v-else
+            class="rounded-xl overflow-hidden shadow-lg"
+            :style="{
+              background: gradientStyle,
+              color: form.widget_text_color,
+            }"
+          >
+            <div class="flex flex-col md:flex-row gap-5 p-6">
+              <div class="flex-1 min-w-0">
+                <div
+                  class="flex items-center space-x-2 text-sm opacity-90 mb-2"
+                >
+                  <Coins :size="16" />
+                  <span>{{ form.label || "Fund Label" }}</span>
+                </div>
+                <div
+                  v-if="form.description"
+                  class="text-sm opacity-80 mb-2"
+                >
+                  {{ form.description }}
+                </div>
+                <div v-if="form.target_amount_xmr" class="text-sm opacity-90 mb-2">
+                  {{ t("fundcard.target") }}: {{ form.target_amount_xmr }} XMR
+                </div>
+              </div>
+
+              <div class="flex flex-col items-center shrink-0">
+                <div
+                  class="bg-white rounded-lg p-1.5"
+                  style="box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15)"
+                >
+                  <img
+                    v-if="staticWidgetQr"
+                    :src="staticWidgetQr"
+                    alt="QR Code"
+                    class="w-[140px] h-[140px] block"
+                  />
+                  <div
+                    v-else
+                    class="w-[140px] h-[140px] flex items-center justify-center text-gray-400 text-xs"
+                  >
+                    QR
+                  </div>
+                </div>
+                <div
+                  class="text-[10px] opacity-70 mt-2 text-center break-all max-w-[160px]"
+                >
+                  {{ shortDepositAddress }}
+                </div>
+                <button
+                  class="mt-1.5 text-[11px] px-2.5 py-1 rounded-md border cursor-pointer transition-colors"
+                  :style="{
+                    borderColor: form.widget_text_color,
+                    color: form.widget_text_color,
+                    background: 'transparent',
+                  }"
+                  @click="copyStaticAddress"
+                >
+                  {{ copiedStaticAddress ? t("common.copied") : t("funddetail.copyAddress") }}
+                </button>
+              </div>
+            </div>
+
+            <div
+              class="text-[11px] opacity-60 px-6 pt-3 pb-3"
+              :style="{ color: form.widget_text_color }"
+            >
+              <a
+                href="https://xmrfts.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="hover:opacity-100 transition-opacity"
+                :style="{ color: 'inherit', textDecoration: 'none' }"
+              >
+                Powered by xmrfts.com
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Static embed code -->
+        <div class="mb-6">
+          <p class="text-sm font-medium text-gray-700 mb-2">{{ t("funddetail.staticEmbedCode") }}</p>
+          <div class="relative">
+            <pre
+              class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto max-h-64"
+            ><code>{{ staticWidgetSnippet }}</code></pre>
+            <button
+              class="absolute top-2 right-2 px-2 py-1 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 transition-colors flex items-center gap-1 text-xs"
+              @click="copyStaticEmbedCode"
+            >
+              <Copy :size="14" />
+              {{ copiedStaticEmbed ? t("common.copied") : t("funddetail.copyStaticEmbed") }}
+            </button>
+          </div>
+        </div>
+
+        <p class="text-xs text-gray-500 flex items-center space-x-1">
+          <AlertCircle :size="12" />
+          <span>{{ t("funddetail.staticWidgetNote") }}</span>
+        </p>
+      </div>
     </template>
 
     <!-- Delete confirmation modal -->
@@ -773,6 +895,12 @@ const copiedAddress = ref(false);
 const copiedEmbed = ref(false);
 const copiedJsonUrl = ref(false);
 
+// Static widget state
+const staticWidgetQr = ref("");
+const staticWidgetLoading = ref(false);
+const copiedStaticEmbed = ref(false);
+const copiedStaticAddress = ref(false);
+
 // PNG export dropdown
 const showPngDropdown = ref(false);
 
@@ -828,6 +956,48 @@ const embedCode = computed(
   () =>
     `<div id="xmr-fund-widget"></div>\n<script src="${appOrigin.value}/widget/${fundUuid.value}.js">${"\u003c/"}script>`,
 );
+
+const staticWidgetSnippet = computed(() => {
+  const bgColor = form.value.widget_background_color || "#667eea";
+  const textColor = form.value.widget_text_color || "#ffffff";
+  const endColor = gradientEndColor.value;
+  const label = (form.value.label || "Fund Label").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const desc = (form.value.description || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const target = form.value.target_amount_xmr ? form.value.target_amount_xmr : "";
+  const addr = form.value.deposit_address || "";
+  const addrShort = addr.length > 20 ? addr.slice(0, 10) + "..." + addr.slice(-10) : addr;
+  const qr = staticWidgetQr.value || "";
+  const btnBorder = textColor;
+
+  const descHtml = desc
+    ? `<div style="font-size:12px;opacity:0.8;margin-bottom:6px;">${desc}</div>`
+    : "";
+  const targetHtml = target
+    ? `<div style="font-size:14px;opacity:0.9;margin-bottom:8px;">Target: ${target} XMR</div>`
+    : "";
+  const qrImg = qr
+    ? `<img src="${qr}" alt="QR Code" style="width:140px;height:140px;border-radius:8px;background:#fff;padding:4px;" />`
+    : "";
+
+  return `<!-- XMR Fund Transparency Suite — Static Offline Widget (zero requests) -->
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:linear-gradient(135deg,${bgColor} 0%,${endColor} 100%);color:${textColor};padding:24px;border-radius:12px;box-shadow:0 4px 6px rgba(0,0,0,0.1);max-width:500px;width:100%;display:flex;flex-direction:column;">
+<div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+<div style="flex:1;min-width:200px;">
+<div style="font-size:14px;opacity:0.9;margin-bottom:8px;">&#128176; ${label}</div>
+${descHtml}${targetHtml}
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;min-width:140px;">
+${qrImg}
+<div style="font-size:10px;opacity:0.7;word-break:break-all;margin-top:8px;text-align:center;">${addrShort}</div>
+<button data-addr="${addr}" onclick="xmrStaticCopyAddr(this)" style="margin-top:6px;font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid ${btnBorder};background:transparent;color:${textColor};cursor:pointer;opacity:0.9;">Copy Address</button>
+</div>
+</div>
+<div style="font-size:11px;opacity:0.6;padding-top:12px;"><a href="https://xmrfts.com" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none;">Powered by xmrfts.com</a></div>
+</div>
+<script>
+function xmrStaticCopyAddr(btn){var a=btn.getAttribute('data-addr');function d(){btn.textContent='Copy Address';}function f(){var t=document.createElement('textarea');t.value=a;t.style.position='fixed';t.style.left='-9999px';t.style.opacity='0';document.body.appendChild(t);t.focus();t.select();document.execCommand('copy');document.body.removeChild(t);btn.textContent='Copied!';setTimeout(d,2000);}try{if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(a).then(function(){btn.textContent='Copied!';setTimeout(d,2000);}).catch(f);}else{f();}}catch(e){f();}}
+${"\u003c/"}script>`;
+});
 
 const csvExportUrl = computed(
   () => `${appOrigin.value}/widget/${fundUuid.value}/export/csv`,
@@ -989,6 +1159,8 @@ async function loadFund() {
 
     // Load widget data
     await loadWidgetData();
+    // Load static widget QR
+    await loadStaticWidget();
     // Check for posts to show news section in widget
     await checkHasPosts();
   } catch (err: any) {
@@ -1046,6 +1218,7 @@ async function saveFund() {
       public_website: fund.value.public_website || "",
     };
     await loadWidgetData();
+    await loadStaticWidget();
     await checkHasPosts();
   } catch (err: any) {
     saveError.value = err.response?.data?.detail || "Failed to save changes";
@@ -1088,41 +1261,98 @@ async function deleteFund() {
   }
 }
 
+// Clipboard helper with execCommand fallback for non-secure contexts
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall through to legacy fallback
+  }
+  // Legacy fallback: temporary textarea + execCommand('copy')
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Copy helpers
 async function copyDepositAddress() {
   if (!fund.value) return;
-  try {
-    await navigator.clipboard.writeText(form.value.deposit_address);
+  const ok = await copyToClipboard(form.value.deposit_address);
+  if (ok) {
     copiedAddress.value = true;
     setTimeout(() => {
       copiedAddress.value = false;
     }, 2000);
-  } catch {
-    // Fallback
   }
 }
 
 async function copyEmbedCode() {
-  try {
-    await navigator.clipboard.writeText(embedCode.value);
+  const ok = await copyToClipboard(embedCode.value);
+  if (ok) {
     copiedEmbed.value = true;
     setTimeout(() => {
       copiedEmbed.value = false;
     }, 2000);
-  } catch {
-    // Fallback
   }
 }
 
 async function copyJsonUrl() {
-  try {
-    await navigator.clipboard.writeText(widgetJsonUrl.value);
+  const ok = await copyToClipboard(widgetJsonUrl.value);
+  if (ok) {
     copiedJsonUrl.value = true;
     setTimeout(() => {
       copiedJsonUrl.value = false;
     }, 2000);
+  }
+}
+
+// Static widget methods
+async function loadStaticWidget() {
+  if (!fund.value) return;
+  staticWidgetLoading.value = true;
+  try {
+    const res = await fundsApi.staticWidget(fund.value.id);
+    staticWidgetQr.value = res.data.qr_data_url;
   } catch {
-    // Fallback
+    staticWidgetQr.value = "";
+  } finally {
+    staticWidgetLoading.value = false;
+  }
+}
+
+async function copyStaticEmbedCode() {
+  const ok = await copyToClipboard(staticWidgetSnippet.value);
+  if (ok) {
+    copiedStaticEmbed.value = true;
+    setTimeout(() => {
+      copiedStaticEmbed.value = false;
+    }, 2000);
+  }
+}
+
+async function copyStaticAddress() {
+  if (!fund.value) return;
+  const ok = await copyToClipboard(form.value.deposit_address);
+  if (ok) {
+    copiedStaticAddress.value = true;
+    setTimeout(() => {
+      copiedStaticAddress.value = false;
+    }, 2000);
   }
 }
 

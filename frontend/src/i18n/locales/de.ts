@@ -248,6 +248,13 @@ const de: Messages = {
     "Das Ändern der Einzahlungsadresse löst einen vollständigen Rescan der Blockchain aus.",
   "funddetail.websiteHint": "Ohne https:// eingeben — z. B. example.com",
 
+  "funddetail.staticWidget": "Statisches Offline-Widget",
+  "funddetail.staticWidgetDesc": "Ein Widget ohne Anfragen — alle Daten sind im Snippet eingebettet. Keine Server-Aufrufe, keine Offenlegung Ihrer Dashboard-URL.",
+  "funddetail.staticWidgetLoading": "QR-Code wird generiert...",
+  "funddetail.staticEmbedCode": "Statischer Embed-Code",
+  "funddetail.staticWidgetNote": "Dieses Widget ist eine Momentaufnahme — es aktualisiert sich nicht automatisch. Generieren Sie es nach Änderungen neu, um die neuesten Fondseinstellungen widerzuspiegeln.",
+  "funddetail.copyStaticEmbed": "Embed-Code kopieren",
+
   "fund.label": "Bezeichnung",
   "fund.labelPh": "Kampagnenname",
   "fund.labelPh2": "Meine Spendenaktion",

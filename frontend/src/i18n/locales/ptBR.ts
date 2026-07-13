@@ -248,6 +248,13 @@ const ptBR: Messages = {
     "Alterar o endereço de depósito acionará uma nova varredura completa da blockchain.",
   "funddetail.websiteHint": "Insira sem https:// — ex. example.com",
 
+  "funddetail.staticWidget": "Widget Estático Offline",
+  "funddetail.staticWidgetDesc": "Um widget sem requisições — todos os dados estão embutidos no snippet. Sem chamadas ao servidor, sem expor a URL do seu painel.",
+  "funddetail.staticWidgetLoading": "Gerando código QR...",
+  "funddetail.staticEmbedCode": "Código de Incorporação Estático",
+  "funddetail.staticWidgetNote": "Este widget é um instantâneo — não atualiza automaticamente. Regenere-o após alterações para refletir as configurações mais recentes do fundo.",
+  "funddetail.copyStaticEmbed": "Copiar Código de Incorporação",
+
   "fund.label": "Rótulo",
   "fund.labelPh": "Nome da campanha",
   "fund.labelPh2": "Minha vaquinha",

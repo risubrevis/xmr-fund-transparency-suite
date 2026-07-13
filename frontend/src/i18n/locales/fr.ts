@@ -248,6 +248,13 @@ const fr: Messages = {
     "Modifier l'adresse de dépôt déclenchera une réanalyse complète de la blockchain.",
   "funddetail.websiteHint": "Saisissez sans https:// — ex. example.com",
 
+  "funddetail.staticWidget": "Widget Statique Hors Ligne",
+  "funddetail.staticWidgetDesc": "Un widget sans requêtes — toutes les données sont intégrées dans le snippet. Aucun appel serveur, aucune exposition de votre URL de tableau de bord.",
+  "funddetail.staticWidgetLoading": "Génération du code QR...",
+  "funddetail.staticEmbedCode": "Code d'Intégration Statique",
+  "funddetail.staticWidgetNote": "Ce widget est un instantané — il ne se met pas à jour automatiquement. Régénérez-le après les modifications pour refléter les derniers paramètres du fonds.",
+  "funddetail.copyStaticEmbed": "Copier le Code d'Intégration",
+
   "fund.label": "Libellé",
   "fund.labelPh": "Nom de la campagne",
   "fund.labelPh2": "Ma levée de fonds",
