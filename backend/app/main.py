@@ -30,7 +30,7 @@ def create_app() -> FastAPI:
     app = FastAPI(
         title="XMR Fund Transparency Suite",
         description="Self-hosted Monero donation transparency tracker — view-key only",
-        version="1.1.1",
+        version="1.2.0",
         docs_url=None if settings.is_production else "/docs",
         redoc_url=None if settings.is_production else "/redoc",
     )
