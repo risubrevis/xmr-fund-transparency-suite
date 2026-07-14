@@ -4,7 +4,7 @@ export type Message = string | Record<string, string>;
 
 export type Messages = Record<string, Message>;
 
-export type LocaleCode = "en" | "es" | "ptBR" | "fr" | "de" | "uk" | "ru";
+export type LocaleCode = "en" | "es" | "ptBR" | "fr" | "de" | "uk" | "be" | "ru";
 
 export interface LocaleMeta {
   code: LocaleCode;

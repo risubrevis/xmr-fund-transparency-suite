@@ -20,7 +20,7 @@ logger = get_logger("api.settings")
 router = APIRouter()
 
 # Locale codes supported by the frontend i18n bundle
-SUPPORTED_LOCALES = {"en", "es", "ptBR", "fr", "de", "uk", "ru"}
+SUPPORTED_LOCALES = {"en", "es", "ptBR", "fr", "de", "uk", "be", "ru"}
 
 
 @router.get("/settings/datetime-format", response_model=DateTimeFormatResponse)

@@ -7,6 +7,7 @@ import ptBR from "./locales/ptBR";
 import fr from "./locales/fr";
 import de from "./locales/de";
 import uk from "./locales/uk";
+import be from "./locales/be";
 import ru from "./locales/ru";
 
 const STORAGE_KEY = "xmrfts_locale";
@@ -18,6 +19,7 @@ export const LOCALES: LocaleMeta[] = [
   { code: "fr", tag: "fr", label: "Français" },
   { code: "de", tag: "de", label: "Deutsch" },
   { code: "uk", tag: "uk", label: "Українська" },
+  { code: "be", tag: "be", label: "Беларуская" },
   { code: "ru", tag: "ru", label: "Русский" },
 ];
 
@@ -28,6 +30,7 @@ const MESSAGES: Record<LocaleCode, Record<string, Message>> = {
   fr,
   de,
   uk,
+  be,
   ru,
 };
 

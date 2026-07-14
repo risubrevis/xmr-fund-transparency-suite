@@ -9,6 +9,7 @@ const en: Messages = {
   "language.fr": "Français",
   "language.de": "Deutsch",
   "language.uk": "Українська",
+  "language.be": "Беларуская",
   "language.ru": "Русский",
 
   // App / nav
