@@ -65,5 +65,5 @@ All times are returned in ISO 8601 format unless a custom datetime pattern is co
 | `GET` | `/widget/{uuid}.js` | Embeddable JavaScript widget (QR code + news) |
 | `GET` | `/widget/{uuid}.json` | Widget JSON data |
 | `GET` | `/widget/{uuid}/posts.json` | Widget posts JSON |
-| `GET` | `/widget/{uuid}/export/{format}` | Public widget export (`xml`, `csv`, `json`) |
+| `GET` | `/widget/{uuid}/export/{format}` | Public widget export (`pdf`, `xlsx`, `csv`, `xml`, `json`; scoped to the widget's fund) |
 | `GET` | `/health` | Healthcheck with DB, Redis, RPC, and scanner status |

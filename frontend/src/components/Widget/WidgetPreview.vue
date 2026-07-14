@@ -42,6 +42,32 @@
           <!-- Download buttons inside widget -->
           <div class="flex flex-wrap gap-1.5 mt-3">
             <a
+              :href="pdfUrl"
+              class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border cursor-pointer transition-opacity hover:opacity-100"
+              :style="{
+                borderColor: textColor,
+                color: textColor,
+                background: 'transparent',
+                opacity: 0.85,
+              }"
+            >
+              <FileDown :size="10" />
+              PDF
+            </a>
+            <a
+              :href="xlsxUrl"
+              class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border cursor-pointer transition-opacity hover:opacity-100"
+              :style="{
+                borderColor: textColor,
+                color: textColor,
+                background: 'transparent',
+                opacity: 0.85,
+              }"
+            >
+              <FileSpreadsheet :size="10" />
+              XLSX
+            </a>
+            <a
               :href="csvUrl"
               class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border cursor-pointer transition-opacity hover:opacity-100"
               :style="{
@@ -254,6 +280,8 @@ import {
   Coins,
   Clock,
   Info,
+  FileDown,
+  FileSpreadsheet,
   FileText,
   FileCode,
   Braces,
@@ -318,6 +346,8 @@ const displayAddress = computed(() => {
   );
 });
 
+const pdfUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "pdf"));
+const xlsxUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "xlsx"));
 const csvUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "csv"));
 const xmlUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "xml"));
 const jsonUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "json"));

@@ -22,6 +22,8 @@ from app.filters import (
 from app.models import Fund, Post, Transaction
 from app.reports.csv_export import generate_csv_export
 from app.reports.json_export import generate_json_export
+from app.reports.pdf import generate_pdf_report
+from app.reports.xlsx import generate_xlsx_export
 from app.reports.xml import generate_xml_report
 from app.settings import get_datetime_format
 
@@ -225,6 +227,8 @@ function xmrLoadMoreNews() {
             var btnStyle = 'display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.85;text-decoration:none;margin-right:4px;';
             var downloadsHtml =
                 '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px;">' +
+                '<a href="' + exportBase + 'pdf" style="' + btnStyle + '">PDF</a>' +
+                '<a href="' + exportBase + 'xlsx" style="' + btnStyle + '">XLSX</a>' +
                 '<a href="' + exportBase + 'csv" style="' + btnStyle + '">CSV</a>' +
                 '<a href="' + exportBase + 'xml" style="' + btnStyle + '">XML</a>' +
                 '<a href="' + exportBase + 'json" style="' + btnStyle + '">JSON</a>' +
@@ -341,7 +345,7 @@ async def get_widget_js(
     )
 
 
-PUBLIC_EXPORT_FORMATS = {"xml", "csv", "json"}
+PUBLIC_EXPORT_FORMATS = {"pdf", "xlsx", "xml", "csv", "json"}
 
 
 async def _get_fund_by_uuid(uuid: str, db: AsyncSession) -> Fund:
@@ -418,8 +422,7 @@ async def public_widget_export(
     if export_format not in PUBLIC_EXPORT_FORMATS:
         raise HTTPException(
             status_code=400,
-            detail=f"Public export only supports: {', '.join(sorted(PUBLIC_EXPORT_FORMATS))}. "
-            f"Use the authenticated endpoint for PDF and XLSX.",
+            detail=f"Public export only supports: {', '.join(sorted(PUBLIC_EXPORT_FORMATS))}.",
         )
 
     if start_date and end_date and start_date > end_date:
@@ -492,6 +495,48 @@ async def public_widget_export(
     deposit_addr = fund.deposit_address
     fund_id_str = str(fund.id)
     filter_meta_or_none = filter_meta if filter_meta else None
+
+    # Sum of the filtered transactions (used by PDF grand total)
+    grand_total = str(sum(tx.amount_xmr for tx in transactions))
+
+    if export_format == "pdf":
+        data = generate_pdf_report(
+            fund_label=fund.label,
+            fund_description=fund.description,
+            deposit_address=deposit_addr,
+            wallet_height=None,
+            transactions=tx_dicts,
+            total_xmr=overall_total,
+            target_xmr=(
+                str(fund.target_amount_xmr) if fund.target_amount_xmr else None
+            ),
+            grand_total=grand_total,
+            date_from=start_date,
+            date_to=end_date,
+            datetime_format=dt_format,
+            filter_metadata=filter_meta_or_none,
+        )
+        return Response(
+            content=data,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f"attachment; filename=report_{fund_id_str}.pdf",
+            },
+        )
+
+    elif export_format == "xlsx":
+        data = generate_xlsx_export(
+            transactions=tx_dicts,
+            fund_label=fund.label,
+            datetime_format=dt_format,
+        )
+        return Response(
+            content=data,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename=export_{fund_id_str}.xlsx",
+            },
+        )
 
     if export_format == "csv":
         data = generate_csv_export(

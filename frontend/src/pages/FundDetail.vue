@@ -399,6 +399,32 @@
                 <!-- Export buttons inside widget -->
                 <div class="flex flex-wrap gap-1.5 mt-3">
                   <a
+                    :href="pdfExportUrl"
+                    class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border cursor-pointer transition-opacity hover:opacity-100"
+                    :style="{
+                      borderColor: form.widget_text_color,
+                      color: form.widget_text_color,
+                      background: 'transparent',
+                      opacity: 0.85,
+                    }"
+                  >
+                    <FileDown :size="10" />
+                    PDF
+                  </a>
+                  <a
+                    :href="xlsxExportUrl"
+                    class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border cursor-pointer transition-opacity hover:opacity-100"
+                    :style="{
+                      borderColor: form.widget_text_color,
+                      color: form.widget_text_color,
+                      background: 'transparent',
+                      opacity: 0.85,
+                    }"
+                  >
+                    <FileSpreadsheet :size="10" />
+                    XLSX
+                  </a>
+                  <a
                     :href="csvExportUrl"
                     class="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded border cursor-pointer transition-opacity hover:opacity-100"
                     :style="{
@@ -843,6 +869,8 @@ import {
   ChevronRight,
   ChevronDown,
   Clock,
+  FileDown,
+  FileSpreadsheet,
   FileText,
   FileCode,
   Braces,
@@ -999,6 +1027,12 @@ function xmrStaticCopyAddr(btn){var a=btn.getAttribute('data-addr');function d()
 ${"\u003c/"}script>`;
 });
 
+const pdfExportUrl = computed(
+  () => `${appOrigin.value}/widget/${fundUuid.value}/export/pdf`,
+);
+const xlsxExportUrl = computed(
+  () => `${appOrigin.value}/widget/${fundUuid.value}/export/xlsx`,
+);
 const csvExportUrl = computed(
   () => `${appOrigin.value}/widget/${fundUuid.value}/export/csv`,
 );

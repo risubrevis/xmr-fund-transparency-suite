@@ -283,7 +283,7 @@ export const settingsApi = {
  */
 export function publicWidgetExportUrl(
   publicUuid: string,
-  format: "xml" | "csv" | "json",
+  format: "pdf" | "xlsx" | "xml" | "csv" | "json",
 ): string {
   const base = import.meta.env.VITE_API_BASE || "";
   return `${base}/widget/${publicUuid}/export/${format}`;
