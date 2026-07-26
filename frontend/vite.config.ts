@@ -29,9 +29,9 @@ export default defineConfig({
         // Proxy API requests for widget data; let the SPA handle /widget page routes
         bypass: (req) => {
           if (
-            !req.url?.match(/^\/widget\/[^/]+\.(js|json)$/) &&
-            !req.url?.match(/^\/widget\/[^/]+\/export\//) &&
-            !req.url?.match(/^\/widget\/[^/]+\/posts\.json/)
+            !req.url?.match(/^\/widget\/(fund|giveaway)\/[^/]+\.(js|json)$/) &&
+            !req.url?.match(/^\/widget\/(fund|giveaway)\/[^/]+\/export\//) &&
+            !req.url?.match(/^\/widget\/(fund|giveaway)\/[^/]+\/posts\.json/)
           ) {
             return req.url;
           }

@@ -970,7 +970,6 @@ const hasMorePosts = ref(false);
 const loadingMore = ref(false);
 const hasPosts = ref(false);
 const freshPostsCount = ref(0);
-let newsLoaded = false;
 let postsOffset = 0;
 
 // Computed
@@ -978,11 +977,11 @@ const appOrigin = computed(
   () => import.meta.env.VITE_API_BASE || window.location.origin,
 );
 const widgetJsonUrl = computed(
-  () => `${appOrigin.value}/widget/${fundUuid.value}.json`,
+  () => `${appOrigin.value}/widget/fund/${fundUuid.value}.json`,
 );
 const embedCode = computed(
   () =>
-    `<div id="xmr-fund-widget"></div>\n<script src="${appOrigin.value}/widget/${fundUuid.value}.js">${"\u003c/"}script>`,
+    `<div id="xmr-fund-widget"></div>\n<script src="${appOrigin.value}/widget/fund/${fundUuid.value}.js">${"\u003c/"}script>`,
 );
 
 const staticWidgetSnippet = computed(() => {
@@ -1028,19 +1027,19 @@ ${"\u003c/"}script>`;
 });
 
 const pdfExportUrl = computed(
-  () => `${appOrigin.value}/widget/${fundUuid.value}/export/pdf`,
+  () => `${appOrigin.value}/widget/fund/${fundUuid.value}/export/pdf`,
 );
 const xlsxExportUrl = computed(
-  () => `${appOrigin.value}/widget/${fundUuid.value}/export/xlsx`,
+  () => `${appOrigin.value}/widget/fund/${fundUuid.value}/export/xlsx`,
 );
 const csvExportUrl = computed(
-  () => `${appOrigin.value}/widget/${fundUuid.value}/export/csv`,
+  () => `${appOrigin.value}/widget/fund/${fundUuid.value}/export/csv`,
 );
 const xmlExportUrl = computed(
-  () => `${appOrigin.value}/widget/${fundUuid.value}/export/xml`,
+  () => `${appOrigin.value}/widget/fund/${fundUuid.value}/export/xml`,
 );
 const jsonExportUrl = computed(
-  () => `${appOrigin.value}/widget/${fundUuid.value}/export/json`,
+  () => `${appOrigin.value}/widget/fund/${fundUuid.value}/export/json`,
 );
 
 const shortDepositAddress = computed(() => {
@@ -1058,21 +1057,6 @@ const progressPct = computed(() => {
   const target = parseFloat(fund.value.target_amount_xmr);
   if (target <= 0) return 0;
   return (received / target) * 100;
-});
-
-const hasChanges = computed(() => {
-  if (!fund.value) return false;
-  return (
-    form.value.label !== fund.value.label ||
-    form.value.description !== (fund.value.description || "") ||
-    form.value.deposit_address !== fund.value.deposit_address ||
-    form.value.target_amount_xmr !== (fund.value.target_amount_xmr || "") ||
-    form.value.widget_background_color !==
-      (fund.value.widget_background_color || "#667eea") ||
-    form.value.widget_text_color !==
-      (fund.value.widget_text_color || "#ffffff") ||
-    form.value.public_website !== (fund.value.public_website || "")
-  );
 });
 
 // Gradient style for widget preview
@@ -1212,7 +1196,7 @@ async function loadWidgetData() {
   widgetLoading.value = true;
   try {
     const base = appOrigin.value;
-    const response = await fetch(`${base}/widget/${fundUuid.value}.json`);
+    const response = await fetch(`${base}/widget/fund/${fundUuid.value}.json`);
     if (!response.ok) throw new Error("Failed to load widget data");
     widgetData.value = await response.json();
   } catch {
@@ -1393,7 +1377,7 @@ async function copyStaticAddress() {
 // News section methods
 function getPostsBaseUrl(): string {
   const base = import.meta.env.VITE_API_BASE || "";
-  return `${base}/widget/${fundUuid.value}`;
+  return `${base}/widget/fund/${fundUuid.value}`;
 }
 
 async function checkHasPosts() {
@@ -1418,13 +1402,11 @@ async function toggleNews() {
     widgetPosts.value = [];
     hasMorePosts.value = false;
     postsOffset = 0;
-    newsLoaded = false;
     await fetchWidgetPosts();
   } else {
     widgetPosts.value = [];
     hasMorePosts.value = false;
     postsOffset = 0;
-    newsLoaded = false;
   }
 }
 
@@ -1439,7 +1421,6 @@ async function fetchWidgetPosts() {
     widgetPosts.value = data.posts;
     hasMorePosts.value = data.has_more;
     postsOffset = data.posts.length;
-    newsLoaded = true;
   } catch {
     newsError.value = true;
   } finally {

@@ -220,13 +220,6 @@ export const fundsApi = {
           .map((s) => `${s.field}:${s.direction}`)
           .join(",");
     }
-    const mediaTypes: Record<string, string> = {
-      pdf: "application/pdf",
-      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      csv: "text/csv",
-      xml: "application/xml",
-      json: "application/json",
-    };
     return api.get(`/api/v1/funds/${id}/export/${format}`, {
       params,
       responseType: "blob",
@@ -278,23 +271,25 @@ export const settingsApi = {
 };
 
 /**
- * Build the public widget export URL (no API key needed).
- * Formats: xml, csv, json.
+ * Build the public fund widget export URL (no API key needed).
+ * Formats: pdf, xlsx, xml, csv, json.
  */
 export function publicWidgetExportUrl(
   publicUuid: string,
   format: "pdf" | "xlsx" | "xml" | "csv" | "json",
 ): string {
   const base = import.meta.env.VITE_API_BASE || "";
-  return `${base}/widget/${publicUuid}/export/${format}`;
+  return `${base}/widget/fund/${publicUuid}/export/${format}`;
 }
 
 export interface Post {
   id: string;
-  fund_id: string;
+  fund_id: string | null;
+  giveaway_id: string | null;
   wallet_id: string;
   body: string;
   fund_label: string | null;
+  giveaway_title: string | null;
   wallet_name: string | null;
   created_at: string;
   updated_at: string | null;
@@ -303,19 +298,174 @@ export interface Post {
 export const postsApi = {
   list: (params?: {
     fund_id?: string;
+    giveaway_id?: string;
     wallet_id?: string;
     start_date?: string;
     end_date?: string;
   }) => api.get<Post[]>("/api/v1/posts", { params }),
 
-  create: (data: { body: string; fund_id?: string }, fundId: string) =>
-    api.post<Post>(`/api/v1/posts?fund_id=${encodeURIComponent(fundId)}`, data),
+  create: (data: {
+    body: string;
+    fund_id?: string;
+    giveaway_id?: string;
+  }) => api.post<Post>("/api/v1/posts", data),
 
-  update: (id: string, data: { body?: string; fund_id?: string }) =>
-    api.patch<Post>(`/api/v1/posts/${id}`, data),
+  update: (
+    id: string,
+    data: { body?: string; fund_id?: string; giveaway_id?: string },
+  ) => api.patch<Post>(`/api/v1/posts/${id}`, data),
 
   delete: (id: string) => api.delete(`/api/v1/posts/${id}`),
 };
+
+// --- Giveaway ---
+
+export interface GiveawayStats {
+  total_received_xmr: string;
+  transaction_count: number;
+  eligible_count: number;
+  last_tx_at: string | null;
+}
+
+export interface GiveawayWinner {
+  winning_txid: string | null;
+  winning_amount_xmr: string | null;
+  winning_timestamp: string | null;
+  winning_block_height: number | null;
+  winning_block_hash: string | null;
+  eligible_count: number;
+}
+
+export interface Giveaway {
+  id: string;
+  public_uuid: string;
+  wallet_id: string;
+  title: string;
+  description: string | null;
+  deposit_address: string;
+  min_amount_xmr: string;
+  start_date: string;
+  end_date: string;
+  instructions_after_end: string | null;
+  is_active: boolean;
+  widget_background_color: string | null;
+  widget_text_color: string | null;
+  public_website: string | null;
+  is_closed: boolean;
+  winning_block_hash: string | null;
+  winning_block_height: number | null;
+  status: "scheduled" | "active" | "ended" | "closed";
+  created_at: string;
+  stats?: GiveawayStats;
+  winner?: GiveawayWinner | null;
+}
+
+export const giveawaysApi = {
+  list: (walletId?: string) => {
+    const params = walletId ? { wallet_id: walletId } : {};
+    return api.get<Giveaway[]>("/api/v1/giveaways", { params });
+  },
+
+  create: (data: {
+    wallet_id: string;
+    title: string;
+    description?: string | null;
+    deposit_address: string;
+    min_amount_xmr: string;
+    start_date: string;
+    end_date: string;
+    instructions_after_end?: string | null;
+    widget_background_color?: string | null;
+    widget_text_color?: string | null;
+    public_website?: string | null;
+  }) => api.post<Giveaway>("/api/v1/giveaways", data),
+
+  get: (id: string) => api.get<Giveaway>(`/api/v1/giveaways/${id}`),
+
+  update: (
+    id: string,
+    data: {
+      title?: string;
+      description?: string | null;
+      is_active?: boolean;
+      deposit_address?: string | null;
+      min_amount_xmr?: string;
+      start_date?: string;
+      end_date?: string;
+      instructions_after_end?: string | null;
+      widget_background_color?: string | null;
+      widget_text_color?: string | null;
+      public_website?: string | null;
+    },
+  ) => api.patch<Giveaway>(`/api/v1/giveaways/${id}`, data),
+
+  delete: (id: string) => api.delete(`/api/v1/giveaways/${id}`),
+
+  pickWinner: (id: string) =>
+    api.post<Giveaway>(`/api/v1/giveaways/${id}/pick-winner`),
+
+  staticWidget: (id: string) =>
+    api.get<{ qr_data_url: string }>(`/api/v1/giveaways/${id}/static-widget`),
+
+  exportFile: (
+    id: string,
+    format: ExportFormat,
+    filters?: TransactionFilters,
+  ) => {
+    const params: Record<string, string> = {};
+    if (filters) {
+      if (filters.start_date) params.start_date = filters.start_date;
+      if (filters.end_date) params.end_date = filters.end_date;
+      if (filters.tiers && filters.tiers.length > 0)
+        params.tiers = filters.tiers.join(",");
+      if (filters.sort && filters.sort.length > 0)
+        params.sort = filters.sort
+          .map((s) => `${s.field}:${s.direction}`)
+          .join(",");
+    }
+    return api.get(`/api/v1/giveaways/${id}/export/${format}`, {
+      params,
+      responseType: "blob",
+    });
+  },
+
+  transactions: (
+    id: string,
+    cursor?: string,
+    limit = 20,
+    filters?: TransactionFilters,
+  ) => {
+    const params: Record<string, string | number> = {
+      cursor: cursor ?? "",
+      limit,
+    };
+    if (filters) {
+      if (filters.start_date) params.start_date = filters.start_date;
+      if (filters.end_date) params.end_date = filters.end_date;
+      if (filters.tiers && filters.tiers.length > 0)
+        params.tiers = filters.tiers.join(",");
+      if (filters.sort && filters.sort.length > 0)
+        params.sort = filters.sort
+          .map((s) => `${s.field}:${s.direction}`)
+          .join(",");
+    }
+    Object.keys(params).forEach(
+      (k) => (params[k] === "" || params[k] === undefined) && delete params[k],
+    );
+    return api.get<TransactionListResponse>(`/api/v1/giveaways/${id}/txs`, {
+      params,
+    });
+  },
+};
+
+/** Build the public giveaway widget export URL (no API key needed). */
+export function publicGiveawayWidgetExportUrl(
+  publicUuid: string,
+  format: "csv" | "xml" | "json",
+): string {
+  const base = import.meta.env.VITE_API_BASE || "";
+  return `${base}/widget/giveaway/${publicUuid}/export/${format}`;
+}
 
 export const healthApi = {
   check: () => api.get("/health"),

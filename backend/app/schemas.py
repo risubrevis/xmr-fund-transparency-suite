@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from decimal import Decimal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -305,6 +305,10 @@ class PostCreate(BaseModel):
         None,
         description="Fund ID to link the post to. If not provided, fund_id query param is used.",
     )
+    giveaway_id: uuid.UUID | None = Field(
+        None,
+        description="Giveaway ID to link the post to. Alternative to fund_id.",
+    )
 
 
 class PostUpdate(BaseModel):
@@ -313,7 +317,11 @@ class PostUpdate(BaseModel):
     body: str | None = Field(None, min_length=1, max_length=2048)
     fund_id: uuid.UUID | None = Field(
         None,
-        description="Move post to a different fund. Also updates wallet_id accordingly.",
+        description="Move post to a fund. Also updates wallet_id accordingly.",
+    )
+    giveaway_id: uuid.UUID | None = Field(
+        None,
+        description="Move post to a giveaway. Alternative to fund_id.",
     )
 
 
@@ -321,10 +329,12 @@ class PostResponse(BaseModel):
     """Post data returned in API responses."""
 
     id: uuid.UUID
-    fund_id: uuid.UUID
+    fund_id: uuid.UUID | None = None
+    giveaway_id: uuid.UUID | None = None
     wallet_id: uuid.UUID
     body: str
     fund_label: str | None = None
+    giveaway_title: str | None = None
     wallet_name: str | None = None
     created_at: datetime
     updated_at: datetime | None = None
@@ -338,3 +348,212 @@ class FilterMetadata(BaseModel):
     date_range: dict | None = None
     tiers: list[dict] | None = None
     sort: list[dict] | None = None
+
+
+# --- Giveaway schemas ---
+
+
+def _validate_monero_address(v: str) -> str:
+    import re
+
+    if not re.match(r"^[48AB][1-9A-HJ-NP-Za-km-z]{94}$", v):
+        raise ValueError("Invalid Monero deposit address format")
+    return v
+
+
+def _normalize_public_website(v: str | None) -> str | None:
+    if v is None:
+        return None
+    v = v.strip()
+    if v.startswith("https://"):
+        v = v[len("https://") :]
+    elif v.startswith("http://"):
+        v = v[len("http://") :]
+    v = v.rstrip("/")
+    return v or None
+
+
+class GiveawayCreate(BaseModel):
+    """Request body for creating a new giveaway."""
+
+    wallet_id: uuid.UUID = Field(
+        ..., description="ID of the wallet this giveaway belongs to."
+    )
+    title: str = Field(..., min_length=1, max_length=255)
+    description: str | None = Field(
+        None,
+        max_length=4096,
+        description="Optional public description or prize details.",
+    )
+    deposit_address: str = Field(
+        ...,
+        min_length=95,
+        max_length=95,
+        description="Unique Monero sub-address dedicated to this giveaway.",
+    )
+    min_amount_xmr: Decimal = Field(
+        ...,
+        description="Minimum XMR transaction amount required to qualify for entry.",
+    )
+    start_date: datetime
+    end_date: datetime
+    instructions_after_end: str | None = Field(
+        None,
+        max_length=4096,
+        description="Instructions for the winner shown once the giveaway closes.",
+    )
+    widget_background_color: str | None = Field(
+        None,
+        pattern=r"^#[0-9a-fA-F]{6}$",
+        description="Optional hex color for widget background.",
+    )
+    widget_text_color: str | None = Field(
+        None,
+        pattern=r"^#[0-9a-fA-F]{6}$",
+        description="Optional hex color for widget text.",
+    )
+    public_website: str | None = Field(
+        None,
+        max_length=255,
+        description="Public website URL (without https://, e.g. example.com).",
+    )
+
+    @field_validator("deposit_address")
+    @classmethod
+    def validate_deposit_address_format(cls, v: str) -> str:
+        return _validate_monero_address(v)
+
+    @field_validator("min_amount_xmr")
+    @classmethod
+    def validate_min_amount(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Minimum amount must be greater than 0")
+        exponent = v.as_tuple().exponent
+        if isinstance(exponent, int) and -exponent > 12:
+            raise ValueError(
+                "Minimum amount must not exceed 12 decimal places (XMR precision)"
+            )
+        return v
+
+    @field_validator("end_date")
+    @classmethod
+    def validate_dates(cls, v: datetime, info) -> datetime:
+        start = info.data.get("start_date")
+        if start is not None and v <= start:
+            raise ValueError("end_date must be after start_date")
+        # A giveaway cannot be created with an end date in the past or now.
+        if v <= datetime.now(timezone.utc):
+            raise ValueError("end_date must be in the future")
+        return v
+
+    @field_validator("public_website")
+    @classmethod
+    def validate_public_website(cls, v: str | None) -> str | None:
+        return _normalize_public_website(v)
+
+
+class GiveawayUpdate(BaseModel):
+    """Request body for updating a giveaway (only before it is closed)."""
+
+    title: str | None = Field(None, min_length=1, max_length=255)
+    description: str | None = Field(None, max_length=4096)
+    is_active: bool | None = None
+    deposit_address: str | None = Field(
+        None,
+        min_length=95,
+        max_length=95,
+        description="Changing this resets recorded transactions for the giveaway.",
+    )
+    min_amount_xmr: Decimal | None = Field(None)
+    start_date: datetime | None = None
+    end_date: datetime | None = None
+    instructions_after_end: str | None = Field(None, max_length=4096)
+    widget_background_color: str | None = Field(None, pattern=r"^#[0-9a-fA-F]{6}$")
+    widget_text_color: str | None = Field(None, pattern=r"^#[0-9a-fA-F]{6}$")
+    public_website: str | None = Field(None, max_length=255)
+
+    @field_validator("deposit_address")
+    @classmethod
+    def validate_deposit_address_format(cls, v: str | None) -> str | None:
+        if v is not None:
+            return _validate_monero_address(v)
+        return v
+
+    @field_validator("min_amount_xmr")
+    @classmethod
+    def validate_min_amount(cls, v: Decimal | None) -> Decimal | None:
+        if v is not None:
+            if v <= 0:
+                raise ValueError("Minimum amount must be greater than 0")
+            exponent = v.as_tuple().exponent
+            if isinstance(exponent, int) and -exponent > 12:
+                raise ValueError(
+                    "Minimum amount must not exceed 12 decimal places (XMR precision)"
+                )
+        return v
+
+    @field_validator("public_website")
+    @classmethod
+    def validate_public_website(cls, v: str | None) -> str | None:
+        return _normalize_public_website(v)
+
+    @model_validator(mode="after")
+    def validate_dates_consistency(self) -> "GiveawayUpdate":
+        if self.start_date is not None and self.end_date is not None:
+            if self.end_date <= self.start_date:
+                raise ValueError("end_date must be after start_date")
+        return self
+
+
+class GiveawayWinnerInfo(BaseModel):
+    """Public winner announcement data (present when is_closed)."""
+
+    winning_txid: str | None = None
+    winning_amount_xmr: Decimal | None = None
+    winning_timestamp: datetime | None = None
+    winning_block_height: int | None = None
+    winning_block_hash: str | None = None
+    eligible_count: int = 0
+
+
+class GiveawayStats(BaseModel):
+    """Aggregated statistics for a giveaway."""
+
+    total_received_xmr: Decimal
+    transaction_count: int
+    eligible_count: int
+    last_tx_at: datetime | None = None
+
+
+class GiveawayResponse(BaseModel):
+    """Giveaway data returned in API responses."""
+
+    id: uuid.UUID
+    public_uuid: str
+    wallet_id: uuid.UUID
+    title: str
+    description: str | None = None
+    deposit_address: str
+    min_amount_xmr: Decimal
+    start_date: datetime
+    end_date: datetime
+    instructions_after_end: str | None = None
+    is_active: bool = True
+    widget_background_color: str | None = None
+    widget_text_color: str | None = None
+    public_website: str | None = None
+    is_closed: bool = False
+    winning_block_hash: str | None = None
+    winning_block_height: int | None = None
+    # Lifecycle status computed by the backend: scheduled | active | ended | closed.
+    status: str = "scheduled"
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class GiveawayDetailResponse(GiveawayResponse):
+    """Full giveaway response including stats and winner info."""
+
+    stats: GiveawayStats | None = None
+    winner: GiveawayWinnerInfo | None = None

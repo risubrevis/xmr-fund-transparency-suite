@@ -489,6 +489,186 @@
         <Loader2 class="mx-auto animate-spin text-monero-orange" :size="24" />
         <p class="text-gray-500 mt-2 text-sm">{{ t("walletdetail.loadingFunds") }}</p>
       </div>
+
+      <!-- Section 3: Giveaways -->
+      <div class="flex items-center justify-between mb-4 mt-8">
+        <h3 class="text-lg font-semibold text-gray-900">{{ t("walletdetail.giveaways") }}</h3>
+        <Button
+          v-if="!showCreateGiveaway"
+          variant="default"
+          size="sm"
+          @click="showCreateGiveaway = true"
+        >
+          <div class="flex items-center space-x-1.5">
+            <PlusCircle :size="14" />
+            <span>{{ t("common.createGiveaway") }}</span>
+          </div>
+        </Button>
+        <Button v-else variant="outline" size="sm" @click="cancelCreateGiveaway">
+          <div class="flex items-center space-x-1.5">
+            <X :size="14" />
+            <span>{{ t("common.cancel") }}</span>
+          </div>
+        </Button>
+      </div>
+
+      <!-- Create giveaway form -->
+      <div
+        v-if="showCreateGiveaway"
+        class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-4"
+      >
+        <form class="space-y-4" @submit.prevent="handleCreateGiveaway">
+          <div>
+            <label for="g-title" class="block text-sm font-medium text-gray-700 mb-1">
+              {{ t("giveaway.titleField") }} <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="g-title"
+              v-model="giveawayForm.title"
+              type="text"
+              required
+              :placeholder="t('giveaway.titlePh')"
+              class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+            />
+          </div>
+
+          <div>
+            <label for="g-addr" class="block text-sm font-medium text-gray-700 mb-1">
+              {{ t("giveaway.depositAddress") }} <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="g-addr"
+              v-model="giveawayForm.deposit_address"
+              type="text"
+              required
+              :placeholder="t('giveaway.depositAddressPh')"
+              class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm font-mono focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+            />
+            <p v-if="giveawayDepositAddressError" class="mt-1 text-xs text-red-600">
+              {{ giveawayDepositAddressError }}
+            </p>
+          </div>
+
+          <div>
+            <label for="g-min" class="block text-sm font-medium text-gray-700 mb-1">
+              {{ t("giveaway.minAmount") }} <span class="text-red-500">*</span>
+            </label>
+            <input
+              id="g-min"
+              v-model="giveawayForm.min_amount_xmr"
+              type="number"
+              step="any"
+              min="0"
+              required
+              :placeholder="t('giveaway.minAmountPh')"
+              class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+            />
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="g-start" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ t("giveaway.startDate") }} <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="g-start"
+                v-model="giveawayForm.start_date"
+                type="datetime-local"
+                required
+                class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+              />
+            </div>
+            <div>
+              <label for="g-end" class="block text-sm font-medium text-gray-700 mb-1">
+                {{ t("giveaway.endDate") }} <span class="text-red-500">*</span>
+              </label>
+              <input
+                id="g-end"
+                v-model="giveawayForm.end_date"
+                type="datetime-local"
+                required
+                class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+              />
+            </div>
+          </div>
+
+          <div
+            v-if="createGiveawayError"
+            class="flex items-start space-x-2 text-sm text-red-800 bg-red-50 border border-red-200 rounded-lg p-3"
+          >
+            <AlertCircle :size="16" class="text-red-600 flex-shrink-0 mt-0.5" />
+            <p>{{ createGiveawayError }}</p>
+          </div>
+
+          <div class="flex justify-end">
+            <Button type="submit" variant="default" :disabled="creatingGiveaway">
+              <div class="flex items-center space-x-2">
+                <Loader2 v-if="creatingGiveaway" :size="16" class="animate-spin" />
+                <PlusCircle v-else :size="16" />
+                <span>{{ creatingGiveaway ? t("common.creating") : t("common.createGiveaway") }}</span>
+              </div>
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Giveaways table -->
+      <div
+        v-if="giveaways.length > 0"
+        class="overflow-x-auto rounded-lg border border-gray-200"
+      >
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t("giveaway.titleField") }}</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t("walletdetail.colEndDate") }}</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t("walletdetail.colEligible") }}</th>
+              <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t("walletdetail.colWinner") }}</th>
+              <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{{ t("walletdetail.colActions") }}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            <tr
+              v-for="(g, index) in giveaways"
+              :key="g.id"
+              :class="{ 'bg-red-50': !g.is_active }"
+            >
+              <td class="px-4 py-3 text-gray-500">{{ index + 1 }}</td>
+              <td class="px-4 py-3 font-medium text-gray-900">{{ g.title }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ formatDate(g.end_date) }}</td>
+              <td class="px-4 py-3 text-gray-700">{{ g.stats?.eligible_count ?? 0 }}</td>
+              <td class="px-4 py-3">
+                <span
+                  :class="g.is_closed ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'"
+                  class="inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-full"
+                >
+                  {{ g.is_closed ? t("walletdetail.giveawayClosed") : t("walletdetail.giveawayOpen") }}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-right">
+                <router-link :to="`/wallets/${walletUuid}/giveaways/${g.public_uuid}`">
+                  <Button variant="outline" size="sm">
+                    <div class="flex items-center space-x-1.5">
+                      <ExternalLink :size="14" />
+                      <span>{{ t("walletdetail.manageGiveaway") }}</span>
+                    </div>
+                  </Button>
+                </router-link>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div v-else-if="!loadingGiveaways" class="text-center py-8">
+        <p class="text-gray-500">{{ t("walletdetail.noGiveaways") }}</p>
+      </div>
+
+      <div v-if="loadingGiveaways" class="text-center py-8">
+        <Loader2 class="mx-auto animate-spin text-monero-orange" :size="24" />
+        <p class="text-gray-500 mt-2 text-sm">{{ t("walletdetail.loadingGiveaways") }}</p>
+      </div>
     </template>
 
     <ConfirmDialog
@@ -512,6 +692,26 @@
       <template #icon>
         <X v-if="wallet?.is_active" :size="20" class="text-red-600" />
         <Check v-else :size="20" class="text-green-600" />
+      </template>
+    </ConfirmDialog>
+
+    <!-- Create-immediately-active giveaway confirmation -->
+    <ConfirmDialog
+      :open="showCreateGiveawayConfirm"
+      :title="t('giveawaydetail.createActiveConfirmTitle')"
+      :message="t('giveawaydetail.createActiveConfirmMsg')"
+      :confirm-text="t('giveawaydetail.createActiveConfirmBtn')"
+      :cancel-text="t('common.cancel')"
+      :loading="creatingGiveaway"
+      :loading-text="t('common.creating')"
+      confirm-variant="destructive"
+      icon-bg-class="bg-amber-100"
+      icon-text-class="text-amber-600"
+      @confirm="confirmCreateActiveGiveaway"
+      @cancel="showCreateGiveawayConfirm = false; pendingCreateActive = false"
+    >
+      <template #icon>
+        <AlertCircle :size="20" class="text-amber-600" />
       </template>
     </ConfirmDialog>
   </div>
@@ -539,8 +739,10 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import {
   walletsApi,
   fundsApi,
+  giveawaysApi,
   type Wallet as WalletType,
   type Fund,
+  type Giveaway,
 } from "@/lib/api";
 import { useDatetimeFormat } from "@/composables/useDatetimeFormat";
 import { useI18n } from "@/composables/useI18n";
@@ -585,6 +787,24 @@ const fundForm = ref({
   public_website: "",
 });
 
+// Giveaways
+const giveaways = ref<Giveaway[]>([]);
+const loadingGiveaways = ref(false);
+const showCreateGiveaway = ref(false);
+const creatingGiveaway = ref(false);
+const createGiveawayError = ref<string | null>(null);
+// Confirmation shown when creating a giveaway that is immediately active.
+const showCreateGiveawayConfirm = ref(false);
+const pendingCreateActive = ref(false);
+const giveawayDepositAddressError = ref<string | null>(null);
+const giveawayForm = ref({
+  title: "",
+  deposit_address: "",
+  min_amount_xmr: "",
+  start_date: "",
+  end_date: "",
+});
+
 function formatDate(dateStr: string): string {
   return formatWithPattern(dateStr);
 }
@@ -601,6 +821,7 @@ async function loadWallet() {
     }
     wallet.value = found;
     await loadFunds();
+    await loadGiveaways();
   } catch (err: any) {
     error.value = err.response?.data?.detail || "Failed to load wallet";
   } finally {
@@ -618,6 +839,19 @@ async function loadFunds() {
     // Funds may not exist yet
   } finally {
     loadingFunds.value = false;
+  }
+}
+
+async function loadGiveaways() {
+  if (!wallet.value) return;
+  loadingGiveaways.value = true;
+  try {
+    const response = await giveawaysApi.list(wallet.value.id);
+    giveaways.value = response.data;
+  } catch {
+    // Giveaways may not exist yet
+  } finally {
+    loadingGiveaways.value = false;
   }
 }
 
@@ -762,6 +996,118 @@ async function handleCreateFund() {
   } finally {
     creatingFund.value = false;
   }
+}
+
+// --- Giveaways ---
+function toLocalInput(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const off = d.getTimezoneOffset();
+  const local = new Date(d.getTime() - off * 60 * 1000);
+  return local.toISOString().slice(0, 16);
+}
+function toIso(local: string): string {
+  if (!local) return "";
+  const d = new Date(local);
+  if (isNaN(d.getTime())) return "";
+  return d.toISOString();
+}
+
+function cancelCreateGiveaway() {
+  showCreateGiveaway.value = false;
+  resetGiveawayForm();
+}
+
+function resetGiveawayForm() {
+  giveawayForm.value = {
+    title: "",
+    deposit_address: "",
+    min_amount_xmr: "",
+    start_date: toLocalInput(new Date().toISOString()),
+    end_date: "",
+  };
+  createGiveawayError.value = null;
+  giveawayDepositAddressError.value = null;
+}
+
+function validateGiveawayDepositAddress(address: string): boolean {
+  if (!address) {
+    giveawayDepositAddressError.value = "Deposit address is required";
+    return false;
+  }
+  if (address.length !== 95) {
+    giveawayDepositAddressError.value = "Invalid Monero address length";
+    return false;
+  }
+  if (!address.startsWith("4") && !address.startsWith("8")) {
+    giveawayDepositAddressError.value =
+      "Monero address must start with 4 (standard) or 8 (subaddress)";
+    return false;
+  }
+  giveawayDepositAddressError.value = null;
+  return true;
+}
+
+async function handleCreateGiveaway() {
+  if (!wallet.value) return;
+  if (!validateGiveawayDepositAddress(giveawayForm.value.deposit_address)) return;
+
+  const startIso = toIso(giveawayForm.value.start_date);
+  const endIso = toIso(giveawayForm.value.end_date);
+  const startMs = new Date(startIso).getTime();
+  const endMs = new Date(endIso).getTime();
+  const nowMs = Date.now();
+
+  if (!startIso || !endIso || isNaN(startMs) || isNaN(endMs)) {
+    createGiveawayError.value = t("giveawaydetail.datesRequired");
+    return;
+  }
+  if (startMs >= endMs) {
+    createGiveawayError.value = t("giveawaydetail.startAfterEnd");
+    return;
+  }
+  if (endMs <= nowMs) {
+    createGiveawayError.value = t("giveawaydetail.endMustBeFuture");
+    return;
+  }
+
+  // Creating a giveaway whose start_date is now/in the past activates it
+  // immediately and locks the core fields — confirm before proceeding.
+  if (startMs <= nowMs) {
+    pendingCreateActive.value = true;
+    showCreateGiveawayConfirm.value = true;
+    return;
+  }
+  await doCreateGiveaway();
+}
+
+async function doCreateGiveaway() {
+  creatingGiveaway.value = true;
+  createGiveawayError.value = null;
+  try {
+    await giveawaysApi.create({
+      wallet_id: wallet.value!.id,
+      title: giveawayForm.value.title,
+      deposit_address: giveawayForm.value.deposit_address,
+      min_amount_xmr: giveawayForm.value.min_amount_xmr,
+      start_date: toIso(giveawayForm.value.start_date),
+      end_date: toIso(giveawayForm.value.end_date),
+    });
+    await loadGiveaways();
+    showCreateGiveaway.value = false;
+    resetGiveawayForm();
+  } catch (err: any) {
+    createGiveawayError.value =
+      err.response?.data?.detail || "Failed to create giveaway";
+  } finally {
+    creatingGiveaway.value = false;
+  }
+}
+
+async function confirmCreateActiveGiveaway() {
+  showCreateGiveawayConfirm.value = false;
+  pendingCreateActive.value = false;
+  await doCreateGiveaway();
 }
 
 onMounted(async () => {

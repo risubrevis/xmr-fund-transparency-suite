@@ -25,6 +25,7 @@ def generate_json_export(
     fund_id: str,
     datetime_format: str | None = None,
     filter_metadata: dict | None = None,
+    extra_metadata: dict | None = None,
 ) -> str:
     """Generate a JSON string from filtered transaction data.
 
@@ -64,5 +65,7 @@ def generate_json_export(
         "filters": filter_metadata or {},
         "transactions": formatted_txs,
     }
+    if extra_metadata:
+        result.update(extra_metadata)
 
     return json.dumps(result, indent=2, cls=_DecimalEncoder)

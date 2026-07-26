@@ -8,7 +8,7 @@ from app.config import settings
 from app.crypto import ViewKeyEncryption
 from app.database import async_session_factory
 from app.logging import get_logger
-from app.models import Fund, Transaction, Wallet
+from app.models import Fund, Giveaway, Transaction, Wallet
 from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,7 +53,7 @@ class MoneroScanner:
         return self._http_client
 
     async def _rpc_call(
-        self, method: str, params: dict = None, timeout: float | None = None
+        self, method: str, params: dict | None = None, timeout: float | None = None
     ) -> dict:
         """JSON-RPC call with retry and exponential backoff."""
         payload = {
@@ -182,21 +182,27 @@ class MoneroScanner:
             raise
 
     async def sync_wallet(
-        self, wallet: Wallet, funds: list[Fund], db: AsyncSession
+        self,
+        wallet: Wallet,
+        funds: list[Fund],
+        giveaways: list[Giveaway],
+        db: AsyncSession,
     ) -> int:
         """
-        Sync a wallet and record incoming transactions for each fund.
+        Sync a wallet and record incoming transactions for each fund/giveaway.
 
-        Only records transactions whose destination address matches
-        a fund's deposit_address.
+        Only records transactions whose destination address matches a
+        fund's or a giveaway's deposit_address.
         """
         filename = self._wallet_filename(wallet)
         from_height = wallet.last_scanned_height or wallet.start_height
 
-        # Build a lookup: deposit_address -> fund
-        fund_by_address: dict[str, Fund] = {}
+        # Build lookups: deposit_address -> (kind, entity)
+        destinations: dict[str, tuple[str, Fund | Giveaway]] = {}
         for fund in funds:
-            fund_by_address[fund.deposit_address] = fund
+            destinations[fund.deposit_address] = ("fund", fund)
+        for giveaway in giveaways:
+            destinations[giveaway.deposit_address] = ("giveaway", giveaway)
 
         result = await self._rpc_call(
             "get_transfers",
@@ -216,29 +222,41 @@ class MoneroScanner:
         for tx in incoming:
             # Filter: only record transactions sent to a known deposit address
             tx_address = tx.get("address", "")
-            fund = fund_by_address.get(tx_address)
+            match = destinations.get(tx_address)
 
-            if fund is None:
+            if match is None:
                 skipped_count += 1
                 logger.debug(
                     "skipping_tx_address_mismatch",
                     txid=tx["txid"],
                     tx_address=tx_address[:12] + "...",
-                    known_addresses=list(fund_by_address.keys()),
+                    known_addresses=list(destinations.keys()),
                 )
                 continue
 
-            exists = await db.execute(
-                select(Transaction).where(
-                    Transaction.txid == tx["txid"], Transaction.fund_id == fund.id
+            kind, entity = match
+            # Dedup by txid + entity id (one of fund_id/giveaway_id is set).
+            if kind == "fund":
+                exists = await db.execute(
+                    select(Transaction).where(
+                        Transaction.txid == tx["txid"],
+                        Transaction.fund_id == entity.id,
+                    )
                 )
-            )
+            else:
+                exists = await db.execute(
+                    select(Transaction).where(
+                        Transaction.txid == tx["txid"],
+                        Transaction.giveaway_id == entity.id,
+                    )
+                )
             if exists.scalar_one_or_none():
                 continue
 
             amount_xmr = Decimal(str(tx["amount"])) / ATOMIC_PER_XMR
             new_tx = Transaction(
-                fund_id=fund.id,
+                fund_id=entity.id if kind == "fund" else None,
+                giveaway_id=entity.id if kind == "giveaway" else None,
                 wallet_id=wallet.id,
                 txid=tx["txid"],
                 amount_atomic=tx["amount"],
@@ -327,13 +345,22 @@ class MoneroScanner:
                                     )
                                     funds = funds_result.scalars().all()
 
-                                    if not funds:
+                                    # Get all active giveaways for this wallet
+                                    giveaways_result = await db.execute(
+                                        select(Giveaway).where(
+                                            Giveaway.wallet_id == wallet.id,
+                                            Giveaway.is_active.is_(True),
+                                        )
+                                    )
+                                    giveaways = giveaways_result.scalars().all()
+
+                                    if not funds and not giveaways:
                                         logger.info(
-                                            "no_active_funds_for_wallet",
+                                            "no_active_targets_for_wallet",
                                             wallet_id=str(wallet.id),
                                             filename=filename,
                                         )
-                                        # Still update scan height even with no funds
+                                        # Still update scan height even with no targets
                                         try:
                                             await self._rpc_call(
                                                 "get_height",
@@ -347,7 +374,9 @@ class MoneroScanner:
                                         await db.commit()
                                         continue
 
-                                    await self.sync_wallet(wallet, list(funds), db)
+                                    await self.sync_wallet(
+                                        wallet, list(funds), list(giveaways), db
+                                    )
                                 except Exception as e:
                                     wallet.scan_error = str(e)[:500]
                                     await db.commit()

@@ -1,18 +1,19 @@
 import uuid
 
 from decimal import Decimal
+from typing import cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.endpoints.widget import _generate_qr_data_url
+from app.api.v1.endpoints.fund_widget import _generate_qr_data_url
 from app.auth import verify_api_key
 from app.database import get_db
 from app.logging import get_logger
 from app.models import Fund, Post, Transaction, Wallet
-from app.reports.png_widget import generate_widget_png, FORMATS
+from app.reports.png_widget import FORMATS, WidgetFormat, generate_widget_png
 from app.schemas import (
     FundCreate,
     FundDetailResponse,
@@ -54,7 +55,7 @@ async def list_funds(
         row = stats_result.one()
         stats = FundStats(
             total_received_xmr=row.total,
-            transaction_count=row.count,
+            transaction_count=row._mapping["count"],
             last_tx_at=row.last_tx,
         )
         responses.append(
@@ -171,7 +172,7 @@ async def get_fund(
 
     stats = FundStats(
         total_received_xmr=row.total,
-        transaction_count=row.count,
+        transaction_count=row._mapping["count"],
         last_tx_at=row.last_tx,
     )
 
@@ -249,7 +250,7 @@ async def update_fund(
             )
             # Delete all transactions for this fund (they were for the old address)
             await db.execute(
-                Transaction.__table__.delete().where(Transaction.fund_id == fund_id)
+                delete(Transaction).where(Transaction.fund_id == fund_id)
             )
             # Reset wallet scan progress so the scanner re-scans
             wallet_result = await db.execute(
@@ -285,7 +286,7 @@ async def update_fund(
     row = stats_result.one()
     stats = FundStats(
         total_received_xmr=row.total,
-        transaction_count=row.count,
+        transaction_count=row._mapping["count"],
         last_tx_at=row.last_tx,
     )
 
@@ -321,9 +322,9 @@ async def delete_fund(
 
     # Delete transactions and posts first (cascade should handle this, but be explicit)
     await db.execute(
-        Transaction.__table__.delete().where(Transaction.fund_id == fund_id)
+        delete(Transaction).where(Transaction.fund_id == fund_id)
     )
-    await db.execute(Post.__table__.delete().where(Post.fund_id == fund_id))
+    await db.execute(delete(Post).where(Post.fund_id == fund_id))
     await db.delete(fund)
     await db.commit()
 
@@ -374,7 +375,7 @@ async def download_widget_png(
         total_received_xmr=f"{total_xmr:.4f}",
         base_color=base_color,
         text_color=text_color,
-        format_type=format,
+        format_type=cast(WidgetFormat, format),
     )
 
     filename = f"{fund.label.replace(' ', '_')}_{format}.png"

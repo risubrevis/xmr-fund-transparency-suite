@@ -115,7 +115,7 @@ class TestMoneroScanner:
 
         with patch.object(scanner, "_rpc_call", new_callable=AsyncMock) as mock_rpc:
             mock_rpc.return_value = transfers
-            new_count = await scanner.sync_wallet(wallet, [fund], mock_db)
+            new_count = await scanner.sync_wallet(wallet, [fund], [], mock_db)
 
         # Only the sub-address transfer should be saved (deposit_address = SUB_ADDRESS)
         assert new_count == 1
@@ -190,7 +190,7 @@ class TestMoneroScanner:
 
         with patch.object(scanner, "_rpc_call", new_callable=AsyncMock) as mock_rpc:
             mock_rpc.return_value = transfers
-            new_count = await scanner.sync_wallet(wallet, [fund1, fund2], mock_db)
+            new_count = await scanner.sync_wallet(wallet, [fund1, fund2], [], mock_db)
 
         # Both transactions should be saved (one per fund)
         assert new_count == 2
@@ -244,7 +244,7 @@ class TestMoneroScanner:
 
         with patch.object(scanner, "_rpc_call", new_callable=AsyncMock) as mock_rpc:
             mock_rpc.return_value = transfers
-            new_count = await scanner.sync_wallet(wallet, [fund], mock_db)
+            new_count = await scanner.sync_wallet(wallet, [fund], [], mock_db)
 
         assert new_count == 0
         assert mock_db.add.call_count == 0
@@ -282,7 +282,7 @@ class TestMoneroScanner:
 
         with patch.object(scanner, "_rpc_call", new_callable=AsyncMock) as mock_rpc:
             mock_rpc.return_value = transfers
-            await scanner.sync_wallet(wallet, [fund], mock_db)
+            await scanner.sync_wallet(wallet, [fund], [], mock_db)
 
             # Verify the get_transfers call includes the correct filename
             call_args = mock_rpc.call_args
@@ -375,12 +375,12 @@ class TestMoneroScanner:
         # Scan wallet 1: should match 1 transaction (PRIMARY_ADDRESS matches fund_w1)
         with patch.object(scanner, "_rpc_call", new_callable=AsyncMock) as mock_rpc:
             mock_rpc.return_value = transfers_w1
-            count_w1 = await scanner.sync_wallet(wallet1, [fund_w1], mock_db)
+            count_w1 = await scanner.sync_wallet(wallet1, [fund_w1], [], mock_db)
 
         # Scan wallet 2: should match 1 transaction (SUB_ADDRESS matches fund_w2)
         with patch.object(scanner, "_rpc_call", new_callable=AsyncMock) as mock_rpc:
             mock_rpc.return_value = transfers_w2
-            count_w2 = await scanner.sync_wallet(wallet2, [fund_w2], mock_db)
+            count_w2 = await scanner.sync_wallet(wallet2, [fund_w2], [], mock_db)
 
         # Each wallet should only record transactions for its own funds
         assert count_w1 == 1

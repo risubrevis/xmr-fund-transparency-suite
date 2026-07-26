@@ -8,6 +8,7 @@ import Settings from "./pages/Settings.vue";
 import Wallets from "./pages/Wallets.vue";
 import WalletDetail from "./pages/WalletDetail.vue";
 import FundDetail from "./pages/FundDetail.vue";
+import GiveawayDetail from "./pages/GiveawayDetail.vue";
 import { useFundStore } from "./stores/fund";
 import { isApiKeySet } from "./lib/api";
 import { bootstrapLocale } from "./i18n";
@@ -33,6 +34,12 @@ const router = createRouter({
       path: "/wallets/:walletUuid/funds/:fundUuid",
       name: "fund-detail",
       component: FundDetail,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: "/wallets/:walletUuid/giveaways/:giveawayUuid",
+      name: "giveaway-detail",
+      component: GiveawayDetail,
       meta: { requiresAuth: true },
     },
     {

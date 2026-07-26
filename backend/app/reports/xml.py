@@ -17,6 +17,7 @@ def generate_xml_report(
     fund_id: str | None = None,
     deposit_address: str | None = None,
     filter_metadata: dict | None = None,
+    extra_metadata: dict | None = None,
 ) -> str:
     """Generate XML report from transaction data."""
     root = Element("fund_report")
@@ -51,6 +52,14 @@ def generate_xml_report(
 
     tx_count = SubElement(meta, "transaction_count")
     tx_count.text = str(len(transactions))
+
+    # Extra metadata (giveaway-specific fields, etc.)
+    if extra_metadata:
+        extra_elem = SubElement(meta, "extra")
+        for k, v in extra_metadata.items():
+            if v is not None:
+                item = SubElement(extra_elem, k)
+                item.text = str(v)
 
     # Filter metadata
     if filter_metadata:

@@ -3,16 +3,22 @@ import { ref, watch } from "vue";
 import {
   walletsApi,
   fundsApi,
+  giveawaysApi,
   setApiKey,
   getApiKey,
   clearApiKey,
   validateApiKey,
   type Wallet,
   type Fund,
+  type Giveaway,
 } from "@/lib/api";
 
 const STORAGE_WALLET_KEY = "xmr_selected_wallet_id";
 const STORAGE_FUND_KEY = "xmr_selected_fund_id";
+const STORAGE_GIVEAWAY_KEY = "xmr_selected_giveaway_id";
+const STORAGE_ENTITY_MODE_KEY = "xmr_entity_mode";
+
+type EntityMode = "fund" | "giveaway";
 
 function loadFromStorage(key: string): string | null {
   return localStorage.getItem(key);
@@ -39,6 +45,17 @@ export const useFundStore = defineStore("fund", () => {
   const currentFund = ref<Fund | null>(null);
   const selectedFundId = ref<string | null>(loadFromStorage(STORAGE_FUND_KEY));
 
+  // Giveaway state
+  const giveaways = ref<Giveaway[]>([]);
+  const currentGiveaway = ref<Giveaway | null>(null);
+  const selectedGiveawayId = ref<string | null>(
+    loadFromStorage(STORAGE_GIVEAWAY_KEY),
+  );
+  // Which entity type the dashboard shows: "fund" or "giveaway".
+  const entityMode = ref<EntityMode>(
+    (loadFromStorage(STORAGE_ENTITY_MODE_KEY) as EntityMode) || "fund",
+  );
+
   // General state
   const loading = ref(false);
   const error = ref<string | null>(null);
@@ -49,6 +66,8 @@ export const useFundStore = defineStore("fund", () => {
   // Persist selections to localStorage
   watch(selectedWalletId, (id) => saveToStorage(STORAGE_WALLET_KEY, id));
   watch(selectedFundId, (id) => saveToStorage(STORAGE_FUND_KEY, id));
+  watch(selectedGiveawayId, (id) => saveToStorage(STORAGE_GIVEAWAY_KEY, id));
+  watch(entityMode, (m) => saveToStorage(STORAGE_ENTITY_MODE_KEY, m));
 
   async function validateAndSetApiKey(key: string): Promise<boolean> {
     validating.value = true;
@@ -63,7 +82,10 @@ export const useFundStore = defineStore("fund", () => {
       apiKeySet.value = true;
       const walletList = await loadWallets();
       if (walletList.length > 0 && currentWallet.value) {
-        await loadFunds(currentWallet.value.id);
+        await Promise.all([
+          loadFunds(currentWallet.value.id),
+          loadGiveaways(currentWallet.value.id),
+        ]);
       }
       return true;
     } catch {
@@ -232,7 +254,7 @@ export const useFundStore = defineStore("fund", () => {
       currentFund.value = null;
       return null;
     }
-    const fundList = await loadFunds(currentWallet.value!.id);
+    await loadFunds(currentWallet.value!.id);
     return currentFund.value;
   }
 
@@ -241,8 +263,74 @@ export const useFundStore = defineStore("fund", () => {
     if (!wallet) return;
     currentWallet.value = wallet;
     selectedWalletId.value = walletId;
-    // Load funds for the newly selected wallet
-    await loadFunds(walletId);
+    // Load both funds and giveaways for the newly selected wallet.
+    await Promise.all([loadFunds(walletId), loadGiveaways(walletId)]);
+  }
+
+  async function loadGiveaways(walletId: string): Promise<Giveaway[]> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await giveawaysApi.list(walletId);
+      giveaways.value = response.data;
+      // Restore giveaway from localStorage or pick the first one
+      if (giveaways.value.length > 0) {
+        const savedId = selectedGiveawayId.value;
+        const match = savedId
+          ? giveaways.value.find((g) => g.id === savedId)
+          : null;
+        if (match) {
+          const detailResp = await giveawaysApi.get(match.id);
+          currentGiveaway.value = detailResp.data;
+        } else {
+          const detailResp = await giveawaysApi.get(giveaways.value[0].id);
+          currentGiveaway.value = detailResp.data;
+        }
+        selectedGiveawayId.value = currentGiveaway.value.id;
+      } else {
+        currentGiveaway.value = null;
+        selectedGiveawayId.value = null;
+      }
+      return giveaways.value;
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        authError.value = "API key is no longer valid";
+        logout();
+        return [];
+      }
+      error.value = err.response?.data?.detail || "Failed to load giveaways";
+      return [];
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function fetchGiveaway(id: string): Promise<Giveaway | null> {
+    loading.value = true;
+    error.value = null;
+    try {
+      const response = await giveawaysApi.get(id);
+      currentGiveaway.value = response.data;
+      return response.data;
+    } catch (err: any) {
+      if (err.response?.status === 401) {
+        authError.value = "API key is no longer valid";
+        logout();
+        return null;
+      }
+      error.value = err.response?.data?.detail || "Failed to load giveaway";
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function selectGiveaway(giveawayId: string): Promise<void> {
+    const giveaway = giveaways.value.find((g) => g.id === giveawayId);
+    if (!giveaway) return;
+    const detailResp = await giveawaysApi.get(giveawayId);
+    currentGiveaway.value = detailResp.data;
+    selectedGiveawayId.value = giveawayId;
   }
 
   async function selectFund(fundId: string): Promise<void> {
@@ -258,10 +346,13 @@ export const useFundStore = defineStore("fund", () => {
     apiKeySet.value = false;
     currentWallet.value = null;
     currentFund.value = null;
+    currentGiveaway.value = null;
     selectedWalletId.value = null;
     selectedFundId.value = null;
+    selectedGiveawayId.value = null;
     wallets.value = [];
     funds.value = [];
+    giveaways.value = [];
     authError.value = "";
   }
 
@@ -269,7 +360,10 @@ export const useFundStore = defineStore("fund", () => {
     if (apiKeySet.value) {
       const walletList = await loadWallets();
       if (walletList.length > 0 && currentWallet.value) {
-        await loadFunds(currentWallet.value.id);
+        await Promise.all([
+          loadFunds(currentWallet.value.id),
+          loadGiveaways(currentWallet.value.id),
+        ]);
       }
     }
   }
@@ -281,6 +375,10 @@ export const useFundStore = defineStore("fund", () => {
     funds,
     currentFund,
     selectedFundId,
+    giveaways,
+    currentGiveaway,
+    selectedGiveawayId,
+    entityMode,
     loading,
     error,
     apiKeySet,
@@ -289,11 +387,14 @@ export const useFundStore = defineStore("fund", () => {
     validateAndSetApiKey,
     loadWallets,
     loadFunds,
+    loadGiveaways,
     selectWallet,
     selectFund,
+    selectGiveaway,
     createWallet,
     createFund,
     fetchFund,
+    fetchGiveaway,
     fetchWallet,
     loadFund,
     logout,

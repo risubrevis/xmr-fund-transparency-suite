@@ -31,6 +31,20 @@ ok()    { echo -e "${GREEN}✓${NC} $*"; }
 warn()  { echo -e "${YELLOW}!${NC} $*"; }
 error() { echo -e "${RED}✗${NC} $*"; }
 
+# Replace or append KEY=VALUE in .env. Mode-specific compose variables
+# (FRONTEND_TARGET, FRONTEND_INTERNAL_PORT, INSTALL_DEV, RESTART_POLICY,
+# BACKEND_COMMAND, WORKER_COMMAND, LOG_LEVEL, LOG_FORMAT) are persisted so
+# that plain `docker compose ...` calls between setup.sh runs keep using the
+# intended mode instead of silently falling back to production defaults.
+set_env_key() {
+    local key="$1" val="$2"
+    if grep -qE "^${key}=" .env 2>/dev/null; then
+        sed -i "s|^${key}=.*|${key}=${val}|" .env
+    else
+        echo "${key}=${val}" >> .env
+    fi
+}
+
 # ── Defaults ────────────────────────────────────────────────────────────────
 DEV=false
 INIT_ONLY=false
@@ -247,6 +261,17 @@ if [[ "$DEV" == true ]]; then
     info "Starting instance '$INSTANCE' in DEVELOPMENT mode (hot-reload, foreground)..."
     info "Ports: frontend=${FRONTEND_PORT} backend=${BACKEND_PORT}"
     echo ""
+    # Persist dev mode to .env so subsequent `docker compose ...` calls
+    # (restart, up) keep the dev image + port mapping instead of reverting
+    # to production defaults.
+    set_env_key INSTALL_DEV true
+    set_env_key FRONTEND_TARGET dev
+    set_env_key FRONTEND_INTERNAL_PORT 3000
+    set_env_key RESTART_POLICY no
+    set_env_key LOG_LEVEL DEBUG
+    set_env_key LOG_FORMAT text
+    set_env_key BACKEND_COMMAND 'uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload'
+    set_env_key WORKER_COMMAND 'watchfiles "python -m worker.scanner" /app/app /app/worker'
     export INSTALL_DEV=true
     export FRONTEND_TARGET=dev
     export FRONTEND_INTERNAL_PORT=3000
@@ -260,6 +285,16 @@ else
     info "Starting instance '$INSTANCE' in PRODUCTION mode (detached)..."
     info "Ports: frontend=${FRONTEND_PORT} backend=${BACKEND_PORT}"
     echo ""
+    # Persist production mode to .env (and clear any dev overrides from a
+    # previous `setup.sh --dev` run so plain `docker compose ...` stays prod).
+    set_env_key INSTALL_DEV false
+    set_env_key FRONTEND_TARGET production
+    set_env_key FRONTEND_INTERNAL_PORT 80
+    set_env_key RESTART_POLICY unless-stopped
+    set_env_key LOG_LEVEL INFO
+    set_env_key LOG_FORMAT json
+    set_env_key BACKEND_COMMAND ''
+    set_env_key WORKER_COMMAND ''
     docker compose up -d --build
     echo ""
     ok "Containers started (instance: $INSTANCE, project: $COMPOSE_PROJECT_NAME)."

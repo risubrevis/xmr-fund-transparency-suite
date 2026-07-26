@@ -4,7 +4,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <h2 class="text-2xl font-bold text-gray-900 mb-4">{{ t("news.title") }}</h2>
 
-      <!-- Wallet & Fund selectors for creating a post -->
+      <!-- Wallet & Target selectors for creating a post -->
       <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
         <div>
           <label
@@ -29,19 +29,59 @@
           </select>
         </div>
         <div>
-          <label
-            for="create-fund"
-            class="block text-sm font-medium text-gray-700 mb-1"
-          >
-            {{ t("common.fund") }}
+          <label class="block text-sm font-medium text-gray-700 mb-1">
+            {{ t("news.attachTo") }}
           </label>
-          <select
-            id="create-fund"
-            v-model="createFundId"
-            class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
-            :disabled="!createWalletId"
-          >
-            <option value="">{{ t("common.selectFund") }}</option>
+          <div class="flex rounded-lg border border-gray-300 overflow-hidden">
+            <button
+              type="button"
+              :class="[
+                'flex-1 px-3 py-1.5 text-sm font-medium transition-colors',
+                createTargetType === 'fund'
+                  ? 'bg-monero-orange text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50',
+              ]"
+              @click="createTargetType = 'fund'"
+            >
+              {{ t("common.fund") }}
+            </button>
+            <button
+              type="button"
+              :class="[
+                'flex-1 px-3 py-1.5 text-sm font-medium transition-colors border-l border-gray-300',
+                createTargetType === 'giveaway'
+                  ? 'bg-monero-orange text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50',
+              ]"
+              @click="createTargetType = 'giveaway'"
+            >
+              {{ t("common.giveaway") }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label
+          for="create-target"
+          class="block text-sm font-medium text-gray-700 mb-1"
+        >
+          {{ createTargetType === "fund" ? t("common.fund") : t("common.giveaway") }}
+        </label>
+        <select
+          id="create-target"
+          v-model="createTargetId"
+          class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+          :disabled="!createWalletId"
+        >
+          <option value="">
+            {{
+              createTargetType === "fund"
+                ? t("common.selectFund")
+                : t("news.selectGiveaway")
+            }}
+          </option>
+          <template v-if="createTargetType === 'fund'">
             <option
               v-for="fund in availableFunds"
               :key="fund.id"
@@ -49,8 +89,17 @@
             >
               {{ fund.label }}
             </option>
-          </select>
-        </div>
+          </template>
+          <template v-else>
+            <option
+              v-for="giveaway in availableGiveaways"
+              :key="giveaway.id"
+              :value="giveaway.id"
+            >
+              {{ giveaway.title }}
+            </option>
+          </template>
+        </select>
       </div>
 
       <textarea
@@ -66,7 +115,7 @@
         >
         <Button
           variant="default"
-          :disabled="!newPostBody.trim() || submitting || !createFundId"
+          :disabled="!newPostBody.trim() || submitting || !createTargetId"
           @click="handleCreate"
         >
           <div class="flex items-center space-x-1">
@@ -106,50 +155,102 @@
         </div>
         <div>
           <label
-            for="filter-fund"
             class="block text-xs font-medium text-gray-500 mb-1"
           >
-            {{ t("common.fund") }}
+            {{ t("news.attachTo") }}
+          </label>
+          <div class="flex rounded-lg border border-gray-300 overflow-hidden">
+            <button
+              type="button"
+              :class="[
+                'flex-1 px-2 py-1.5 text-sm font-medium transition-colors',
+                filterTargetType === 'fund'
+                  ? 'bg-monero-orange text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50',
+              ]"
+              @click="filterTargetType = 'fund'"
+            >
+              {{ t("common.fund") }}
+            </button>
+            <button
+              type="button"
+              :class="[
+                'flex-1 px-2 py-1.5 text-sm font-medium transition-colors border-l border-gray-300',
+                filterTargetType === 'giveaway'
+                  ? 'bg-monero-orange text-white'
+                  : 'bg-white text-gray-600 hover:bg-gray-50',
+              ]"
+              @click="filterTargetType = 'giveaway'"
+            >
+              {{ t("common.giveaway") }}
+            </button>
+          </div>
+        </div>
+        <div>
+          <label
+            for="filter-target"
+            class="block text-xs font-medium text-gray-500 mb-1"
+          >
+            {{ filterTargetType === "fund" ? t("common.fund") : t("common.giveaway") }}
           </label>
           <select
-            id="filter-fund"
-            v-model="filterFundId"
+            id="filter-target"
+            v-model="filterTargetId"
             class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
             :disabled="!filterWalletId"
           >
-            <option value="">{{ t("news.allFunds") }}</option>
-            <option v-for="fund in filterFunds" :key="fund.id" :value="fund.id">
-              {{ fund.label }}
+            <option value="">
+              {{
+                filterTargetType === "fund"
+                  ? t("news.allFunds")
+                  : t("news.allGiveaways")
+              }}
             </option>
+            <template v-if="filterTargetType === 'fund'">
+              <option v-for="fund in filterFunds" :key="fund.id" :value="fund.id">
+                {{ fund.label }}
+              </option>
+            </template>
+            <template v-else>
+              <option
+                v-for="giveaway in filterGiveaways"
+                :key="giveaway.id"
+                :value="giveaway.id"
+              >
+                {{ giveaway.title }}
+              </option>
+            </template>
           </select>
         </div>
-        <div>
-          <label
-            for="filter-start"
-            class="block text-xs font-medium text-gray-500 mb-1"
-          >
-            {{ t("news.from") }}
-          </label>
-          <input
-            id="filter-start"
-            v-model="filterStartDate"
-            type="date"
-            class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
-          />
-        </div>
-        <div>
-          <label
-            for="filter-end"
-            class="block text-xs font-medium text-gray-500 mb-1"
-          >
-            {{ t("news.to") }}
-          </label>
-          <input
-            id="filter-end"
-            v-model="filterEndDate"
-            type="date"
-            class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
-          />
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label
+              for="filter-start"
+              class="block text-xs font-medium text-gray-500 mb-1"
+            >
+              {{ t("news.from") }}
+            </label>
+            <input
+              id="filter-start"
+              v-model="filterStartDate"
+              type="date"
+              class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+            />
+          </div>
+          <div>
+            <label
+              for="filter-end"
+              class="block text-xs font-medium text-gray-500 mb-1"
+            >
+              {{ t("news.to") }}
+            </label>
+            <input
+              id="filter-end"
+              v-model="filterEndDate"
+              type="date"
+              class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+            />
+          </div>
         </div>
       </div>
       <div class="flex justify-end mt-3">
@@ -183,7 +284,7 @@
       >
         <!-- View mode -->
         <template v-if="editingId !== post.id">
-          <!-- Wallet / Fund badges -->
+          <!-- Wallet / Fund / Giveaway badges -->
           <div class="flex items-center gap-2 mb-2">
             <span
               v-if="post.wallet_name"
@@ -198,6 +299,13 @@
             >
               <Landmark :size="10" class="mr-1" />
               {{ post.fund_label }}
+            </span>
+            <span
+              v-if="post.giveaway_title"
+              class="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800"
+            >
+              <Gift :size="10" class="mr-1" />
+              {{ post.giveaway_title }}
             </span>
           </div>
           <p class="text-gray-800 whitespace-pre-wrap text-sm leading-relaxed">
@@ -252,14 +360,53 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
-                {{ t("common.fund") }}
+                {{ t("news.attachTo") }}
               </label>
-              <select
-                v-model="editFundId"
-                class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
-                :disabled="!editWalletId"
-              >
-                <option value="">{{ t("common.selectFund") }}</option>
+              <div class="flex rounded-lg border border-gray-300 overflow-hidden">
+                <button
+                  type="button"
+                  :class="[
+                    'flex-1 px-3 py-1.5 text-sm font-medium transition-colors',
+                    editTargetType === 'fund'
+                      ? 'bg-monero-orange text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50',
+                  ]"
+                  @click="editTargetType = 'fund'"
+                >
+                  {{ t("common.fund") }}
+                </button>
+                <button
+                  type="button"
+                  :class="[
+                    'flex-1 px-3 py-1.5 text-sm font-medium transition-colors border-l border-gray-300',
+                    editTargetType === 'giveaway'
+                      ? 'bg-monero-orange text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50',
+                  ]"
+                  @click="editTargetType = 'giveaway'"
+                >
+                  {{ t("common.giveaway") }}
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              {{ editTargetType === "fund" ? t("common.fund") : t("common.giveaway") }}
+            </label>
+            <select
+              v-model="editTargetId"
+              class="w-full h-9 px-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-monero-orange focus:border-monero-orange"
+              :disabled="!editWalletId"
+            >
+              <option value="">
+                {{
+                  editTargetType === "fund"
+                    ? t("common.selectFund")
+                    : t("news.selectGiveaway")
+                }}
+              </option>
+              <template v-if="editTargetType === 'fund'">
                 <option
                   v-for="fund in editFunds"
                   :key="fund.id"
@@ -267,8 +414,17 @@
                 >
                   {{ fund.label }}
                 </option>
-              </select>
-            </div>
+              </template>
+              <template v-else>
+                <option
+                  v-for="giveaway in editGiveaways"
+                  :key="giveaway.id"
+                  :value="giveaway.id"
+                >
+                  {{ giveaway.title }}
+                </option>
+              </template>
+            </select>
           </div>
           <textarea
             v-model="editBody"
@@ -291,7 +447,7 @@
               <Button
                 variant="default"
                 size="sm"
-                :disabled="!editBody.trim() || !editFundId || saving"
+                :disabled="!editBody.trim() || !editTargetId || saving"
                 @click="handleUpdate(post.id)"
               >
                 <div class="flex items-center space-x-1">
@@ -332,6 +488,7 @@ import {
   Newspaper,
   Wallet,
   Landmark,
+  Gift,
   X,
 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
@@ -340,12 +497,16 @@ import {
   postsApi,
   walletsApi,
   fundsApi,
+  giveawaysApi,
   type Post,
   type Wallet as WalletType,
   type Fund,
+  type Giveaway,
 } from "@/lib/api";
 import { useFundStore } from "@/stores/fund";
 import { useI18n } from "@/composables/useI18n";
+
+type TargetType = "fund" | "giveaway";
 
 const store = useFundStore();
 const { t } = useI18n();
@@ -354,6 +515,7 @@ const { t } = useI18n();
 const posts = ref<Post[]>([]);
 const wallets = ref<WalletType[]>([]);
 const allFunds = ref<Fund[]>([]);
+const allGiveaways = ref<Giveaway[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
 const deleting = ref(false);
@@ -362,20 +524,23 @@ const saving = ref(false);
 // Create form
 const newPostBody = ref("");
 const createWalletId = ref("");
-const createFundId = ref("");
+const createTargetType = ref<TargetType>("fund");
+const createTargetId = ref("");
 
 // Edit form
 const editingId = ref<string | null>(null);
 const editBody = ref("");
 const editWalletId = ref("");
-const editFundId = ref("");
+const editTargetType = ref<TargetType>("fund");
+const editTargetId = ref("");
 
 // Delete
 const deletingPost = ref<Post | null>(null);
 
 // Filters
 const filterWalletId = ref("");
-const filterFundId = ref("");
+const filterTargetType = ref<TargetType>("fund");
+const filterTargetId = ref("");
 const filterStartDate = ref("");
 const filterEndDate = ref("");
 
@@ -385,9 +550,19 @@ const availableFunds = computed(() => {
   return allFunds.value.filter((f) => f.wallet_id === createWalletId.value);
 });
 
+const availableGiveaways = computed(() => {
+  if (!createWalletId.value) return [];
+  return allGiveaways.value.filter((g) => g.wallet_id === createWalletId.value);
+});
+
 const filterFunds = computed(() => {
   if (!filterWalletId.value) return allFunds.value;
   return allFunds.value.filter((f) => f.wallet_id === filterWalletId.value);
+});
+
+const filterGiveaways = computed(() => {
+  if (!filterWalletId.value) return allGiveaways.value;
+  return allGiveaways.value.filter((g) => g.wallet_id === filterWalletId.value);
 });
 
 const editFunds = computed(() => {
@@ -395,38 +570,61 @@ const editFunds = computed(() => {
   return allFunds.value.filter((f) => f.wallet_id === editWalletId.value);
 });
 
-// When wallet changes, reset fund selection (but not during programmatic init)
+const editGiveaways = computed(() => {
+  if (!editWalletId.value) return [];
+  return allGiveaways.value.filter((g) => g.wallet_id === editWalletId.value);
+});
+
+// When wallet changes, reset target selection (but not during programmatic init)
 watch(createWalletId, () => {
-  createFundId.value = "";
+  createTargetId.value = "";
+});
+
+watch(createTargetType, () => {
+  createTargetId.value = "";
 });
 
 watch(filterWalletId, () => {
-  filterFundId.value = "";
+  filterTargetId.value = "";
+});
+
+watch(filterTargetType, () => {
+  filterTargetId.value = "";
 });
 
 watch(editWalletId, (newVal, oldVal) => {
-  // Only reset fund if user actively changed the wallet, not during init
+  // Only reset target if user actively changed the wallet, not during init
   if (oldVal !== "" && newVal !== oldVal) {
-    editFundId.value = "";
+    editTargetId.value = "";
   }
+});
+
+watch(editTargetType, () => {
+  editTargetId.value = "";
 });
 
 // Load data
 async function loadData() {
-  const [walletsRes, fundsRes] = await Promise.all([
+  const [walletsRes, fundsRes, giveawaysRes] = await Promise.all([
     walletsApi.list(),
     fundsApi.list(),
+    giveawaysApi.list(),
   ]);
   wallets.value = walletsRes.data;
   allFunds.value = fundsRes.data;
+  allGiveaways.value = giveawaysRes.data;
 }
 
 async function loadPosts() {
   loading.value = true;
   try {
     const params: Record<string, string> = {};
-    if (filterFundId.value) {
-      params.fund_id = filterFundId.value;
+    if (filterTargetId.value) {
+      if (filterTargetType.value === "fund") {
+        params.fund_id = filterTargetId.value;
+      } else {
+        params.giveaway_id = filterTargetId.value;
+      }
     } else if (filterWalletId.value) {
       params.wallet_id = filterWalletId.value;
     }
@@ -437,7 +635,15 @@ async function loadPosts() {
       params.end_date = filterEndDate.value + "T23:59:59Z";
     }
     const response = await postsApi.list(params);
-    posts.value = response.data;
+    let list = response.data;
+    if (!filterTargetId.value) {
+      if (filterTargetType.value === "fund") {
+        list = list.filter((p) => p.fund_id != null);
+      } else {
+        list = list.filter((p) => p.giveaway_id != null);
+      }
+    }
+    posts.value = list;
   } catch {
     // Posts list is public, errors are unexpected
   } finally {
@@ -446,13 +652,18 @@ async function loadPosts() {
 }
 
 async function handleCreate() {
-  if (!newPostBody.value.trim() || !createFundId.value) return;
+  if (!newPostBody.value.trim() || !createTargetId.value) return;
   submitting.value = true;
   try {
-    const response = await postsApi.create(
-      { body: newPostBody.value.trim() },
-      createFundId.value,
-    );
+    const data: { body: string; fund_id?: string; giveaway_id?: string } = {
+      body: newPostBody.value.trim(),
+    };
+    if (createTargetType.value === "fund") {
+      data.fund_id = createTargetId.value;
+    } else {
+      data.giveaway_id = createTargetId.value;
+    }
+    const response = await postsApi.create(data);
     posts.value.unshift(response.data);
     newPostBody.value = "";
   } catch {
@@ -465,8 +676,14 @@ async function handleCreate() {
 function startEditing(post: Post) {
   editingId.value = post.id;
   editBody.value = post.body;
-  // Set fund_id first so it doesn't get cleared by the wallet watch
-  editFundId.value = post.fund_id;
+  // Set target type/id first so they don't get cleared by the wallet watch
+  if (post.giveaway_id) {
+    editTargetType.value = "giveaway";
+    editTargetId.value = post.giveaway_id;
+  } else {
+    editTargetType.value = "fund";
+    editTargetId.value = post.fund_id ?? "";
+  }
   editWalletId.value = post.wallet_id;
 }
 
@@ -474,20 +691,37 @@ function cancelEditing() {
   editingId.value = null;
   editBody.value = "";
   editWalletId.value = "";
-  editFundId.value = "";
+  editTargetType.value = "fund";
+  editTargetId.value = "";
 }
 
 async function handleUpdate(postId: string) {
-  if (!editBody.value.trim() || !editFundId.value) return;
+  if (!editBody.value.trim() || !editTargetId.value) return;
   saving.value = true;
   try {
-    const data: { body?: string; fund_id?: string } = {};
-    // Only send body if it changed
+    const data: {
+      body?: string;
+      fund_id?: string;
+      giveaway_id?: string;
+    } = {};
     data.body = editBody.value.trim();
-    // Only send fund_id if it changed
+
     const originalPost = posts.value.find((p) => p.id === postId);
-    if (originalPost && editFundId.value !== originalPost.fund_id) {
-      data.fund_id = editFundId.value;
+    const originalTargetId = originalPost
+      ? originalPost.giveaway_id ?? originalPost.fund_id ?? ""
+      : "";
+    const originalWasGiveaway = !!originalPost?.giveaway_id;
+
+    // Only send target if it changed (either type or id)
+    const targetChanged =
+      editTargetId.value !== originalTargetId ||
+      (editTargetType.value === "giveaway") !== originalWasGiveaway;
+    if (targetChanged) {
+      if (editTargetType.value === "fund") {
+        data.fund_id = editTargetId.value;
+      } else {
+        data.giveaway_id = editTargetId.value;
+      }
     }
 
     const response = await postsApi.update(postId, data);
@@ -498,7 +732,8 @@ async function handleUpdate(postId: string) {
     editingId.value = null;
     editBody.value = "";
     editWalletId.value = "";
-    editFundId.value = "";
+    editTargetType.value = "fund";
+    editTargetId.value = "";
   } catch {
     // Error handling via UI state
   } finally {
@@ -526,7 +761,7 @@ async function handleDelete() {
 
 function clearFilters() {
   filterWalletId.value = "";
-  filterFundId.value = "";
+  filterTargetId.value = "";
   filterStartDate.value = "";
   filterEndDate.value = "";
 }
@@ -543,18 +778,22 @@ function formatDate(dateStr: string): string {
 }
 
 // Watch filters and reload
-watch([filterWalletId, filterFundId, filterStartDate, filterEndDate], () => {
-  loadPosts();
-});
+watch(
+  [filterWalletId, filterTargetId, filterTargetType, filterStartDate, filterEndDate],
+  () => {
+    loadPosts();
+  },
+);
 
 onMounted(async () => {
   await loadData();
-  // Set default wallet/fund for create form
+  // Set default wallet for create form
   if (wallets.value.length > 0) {
     createWalletId.value = wallets.value[0].id;
   }
   if (store.currentFund) {
-    createFundId.value = store.currentFund.id;
+    createTargetType.value = "fund";
+    createTargetId.value = store.currentFund.id;
     // Find the wallet for the current fund
     const fundWallet = wallets.value.find(
       (w) => w.id === store.currentFund!.wallet_id,

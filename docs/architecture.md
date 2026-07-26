@@ -47,7 +47,7 @@ Wallet 2 ──── Fund D (deposit_address: 8jkl…) ── Transaction 4
 xmr-fund-transparency-suite/
 ├── backend/                    # FastAPI Application
 │   ├── app/
-│   │   ├── api/v1/endpoints/   # REST routes (wallets, funds, transactions, posts, exports, widget, events)
+│   │   ├── api/v1/endpoints/   # REST routes (wallets, funds, transactions, posts, exports, fund_widget, giveaway_widget, events)
 │   │   ├── reports/            # Report generators (pdf.py, xlsx.py, csv_export.py, xml.py, json_export.py, png_widget.py)
 │   │   ├── models.py           # SQLAlchemy 2.0 models (Wallet, Fund, Transaction, Post)
 │   │   ├── schemas.py          # Pydantic v2 schemas (WalletCreate, FundCreate, PostCreate, etc.)

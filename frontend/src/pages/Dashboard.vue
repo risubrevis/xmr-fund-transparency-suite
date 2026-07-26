@@ -121,38 +121,73 @@
         </router-link>
       </div>
 
-      <!-- No fund for selected wallet -->
+      <!-- No fund/giveaway for selected wallet -->
       <div
-        v-else-if="currentWallet && funds.length === 0 && !currentFund"
+        v-else-if="currentWallet && entityCount === 0 && !currentEntity"
         class="text-center py-16"
       >
         <Wallet class="mx-auto text-gray-400" :size="48" />
         <h2 class="text-2xl font-bold text-gray-900 mt-4 mb-2">
-          {{ t("dashboard.noFundTitle") }}
+          {{ noEntityTitle }}
         </h2>
         <p class="text-gray-600 mb-6">
-          {{ t("dashboard.noFundDesc") }}
+          {{ noEntityDesc }}
         </p>
         <router-link :to="`/wallets/${currentWallet.uuid}`">
           <Button variant="default" size="lg">
             <div class="flex items-center space-x-2">
               <PlusCircle :size="18" />
-              <span>{{ t("common.createFund") }}</span>
+              <span>{{ noEntityCta }}</span>
             </div>
           </Button>
         </router-link>
       </div>
 
-      <!-- Dashboard with wallet/fund selectors -->
-      <template v-else-if="currentWallet && currentFund">
-        <!-- Wallet Selector -->
-        <Selector
-          :model-value="currentWallet.id"
-          :options="walletOptions"
-          :disabled="wallets.length <= 1 || switchingWallet"
-          :label="t('common.wallet')"
-          @update:model-value="onWalletChange"
-        />
+      <!-- Dashboard with wallet/fund/giveaway selectors -->
+      <template v-else-if="currentWallet && currentEntity">
+        <!-- Wallet Selector + Fund/Giveaway toggle -->
+        <div class="flex flex-col md:flex-row md:items-end gap-3">
+          <div class="flex-1">
+            <Selector
+              :model-value="currentWallet.id"
+              :options="walletOptions"
+              :disabled="wallets.length <= 1 || switchingWallet"
+              :label="t('common.wallet')"
+              @update:model-value="onWalletChange"
+            />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1">
+              {{ t("news.attachTo") }}
+            </label>
+            <div class="flex rounded-lg border border-gray-300 overflow-hidden h-9">
+              <button
+                type="button"
+                :class="[
+                  'flex-1 px-4 text-sm font-medium transition-colors',
+                  entityMode === 'fund'
+                    ? 'bg-monero-orange text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50',
+                ]"
+                @click="switchMode('fund')"
+              >
+                {{ t("common.fund") }}
+              </button>
+              <button
+                type="button"
+                :class="[
+                  'flex-1 px-4 text-sm font-medium transition-colors border-l border-gray-300',
+                  entityMode === 'giveaway'
+                    ? 'bg-monero-orange text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50',
+                ]"
+                @click="switchMode('giveaway')"
+              >
+                {{ t("common.giveaway") }}
+              </button>
+            </div>
+          </div>
+        </div>
 
         <div v-if="switchingWallet" class="text-center py-8">
           <Loader2 class="mx-auto animate-spin text-monero-orange" :size="32" />
@@ -160,36 +195,51 @@
         </div>
 
         <template v-else>
-          <!-- Fund Selector -->
-          <div v-if="funds.length > 1" class="mt-4">
+          <!-- Entity (Fund or Giveaway) Selector -->
+          <div v-if="entityOptions.length > 1" class="mt-4">
             <Selector
-              :model-value="currentFund.id"
-              :options="fundOptions"
-              :disabled="switchingFund"
-              :label="t('common.fund')"
-              @update:model-value="onFundChange"
+              :model-value="currentEntityId"
+              :options="entityOptions"
+              :disabled="switchingEntity"
+              :label="entityMode === 'fund' ? t('common.fund') : t('common.giveaway')"
+              @update:model-value="onEntityChange"
             />
           </div>
 
-          <!-- Wallet info card -->
+          <!-- Info card: FundCard or GiveawayCard -->
           <FundCard
+            v-if="entityMode === 'fund' && currentFund"
             :fund="currentFund"
             :wallet="currentWallet"
             :stats="currentFund.stats"
             :refreshing="refreshing"
             @refresh="refreshData"
           />
+          <GiveawayCard
+            v-else-if="entityMode === 'giveaway' && currentGiveaway"
+            :giveaway="currentGiveaway"
+            :wallet="currentWallet"
+            :refreshing="refreshing"
+            @refresh="refreshData"
+            @picked="onGiveawayPicked"
+          />
 
           <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
             <CumulativeReceivedChart
               :transactions="transactions"
-              :target-amount="currentFund.target_amount_xmr"
+              :target-amount="entityTarget"
               :loading="loadingTransactions"
             />
+            <!-- Replace Goal & Progress with countdown in giveaway mode -->
             <TargetProgressBar
-              :total-received="currentFund.stats?.total_received_xmr || '0.00'"
-              :target-amount="currentFund.target_amount_xmr"
+              v-if="entityMode === 'fund'"
+              :total-received="currentFund?.stats?.total_received_xmr || '0.00'"
+              :target-amount="currentFund?.target_amount_xmr ?? null"
               :loading="loadingTransactions"
+            />
+            <GiveawayCountdown
+              v-else-if="currentGiveaway"
+              :giveaway="currentGiveaway"
             />
             <TimeDistributionChart
               :transactions="transactions"
@@ -221,10 +271,11 @@
             />
           </div>
 
-          <!-- Export Button Group -->
+          <!-- Export Button Group (all formats for funds and giveaways) -->
           <div class="mt-4">
             <ExportButtonGroup
-              :fund-id="currentFund.id"
+              :entity-id="currentEntity.id"
+              :entity-type="entityMode"
               :filters="filters.buildFilters()"
             />
           </div>
@@ -245,7 +296,6 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { useRouter } from "vue-router";
 import {
   Landmark,
   KeyRound,
@@ -259,12 +309,14 @@ import {
   PlusCircle,
 } from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
-import { fundsApi, type Transaction } from "@/lib/api";
+import { fundsApi, giveawaysApi, type Transaction, type Giveaway } from "@/lib/api";
 import { useTransactionFilters } from "@/composables/useTransactionFilters";
 import { useI18n } from "@/composables/useI18n";
 import FundCard from "@/components/Dashboard/FundCard.vue";
+import GiveawayCard from "@/components/Dashboard/GiveawayCard.vue";
 import CumulativeReceivedChart from "@/components/Dashboard/Charts/CumulativeReceivedChart.vue";
 import TargetProgressBar from "@/components/Dashboard/Charts/TargetProgressBar.vue";
+import GiveawayCountdown from "@/components/Dashboard/Charts/GiveawayCountdown.vue";
 import TimeDistributionChart from "@/components/Dashboard/Charts/TimeDistributionChart.vue";
 import DonutSizeDistribution from "@/components/Dashboard/Charts/DonutSizeDistribution.vue";
 import TransactionTable from "@/components/Dashboard/TransactionTable.vue";
@@ -273,7 +325,6 @@ import ExportButtonGroup from "@/components/Dashboard/ExportButtonGroup.vue";
 import { Button } from "@/components/ui/button";
 import { Selector, type SelectorOption } from "@/components/ui/selector";
 
-const router = useRouter();
 const store = useFundStore();
 const filters = useTransactionFilters();
 const { t } = useI18n();
@@ -281,29 +332,61 @@ const { t } = useI18n();
 const apiKeyInput = ref("");
 const showKey = ref(false);
 const switchingWallet = ref(false);
-const switchingFund = ref(false);
+const switchingEntity = ref(false);
 const refreshing = ref(false);
 const authError = computed(() => store.authError);
 const validating = computed(() => store.validating);
 const apiKeySet = computed(() => store.apiKeySet);
 const currentFund = computed(() => store.currentFund);
+const currentGiveaway = computed(() => store.currentGiveaway);
 const currentWallet = computed(() => store.currentWallet);
 const wallets = computed(() => store.wallets);
 const funds = computed(() => store.funds);
+const giveaways = computed(() => store.giveaways);
+const entityMode = computed(() => store.entityMode);
 const loading = computed(() => store.loading);
 const error = computed(() => store.error);
+
+// Current entity (fund or giveaway) depending on the dashboard mode.
+const currentEntity = computed(() =>
+  entityMode.value === "fund" ? currentFund.value : currentGiveaway.value,
+);
+const currentEntityId = computed(() => currentEntity.value?.id ?? "");
+const entityCount = computed(() =>
+  entityMode.value === "fund" ? funds.value.length : giveaways.value.length,
+);
+const entityOptions = computed<SelectorOption[]>(() => {
+  if (entityMode.value === "fund") {
+    return funds.value.map((f) => ({ value: f.id, label: f.label }));
+  }
+  return giveaways.value.map((g) => ({ value: g.id, label: g.title }));
+});
+const entityTarget = computed<string | null>(() => {
+  if (entityMode.value === "fund") return currentFund.value?.target_amount_xmr ?? null;
+  // Giveaways have no fundraising target; the cumulative chart just shows received.
+  return null;
+});
+
+const noEntityTitle = computed(() =>
+  entityMode.value === "fund"
+    ? t("dashboard.noFundTitle")
+    : t("giveawaydashboard.noGiveawayTitle"),
+);
+const noEntityDesc = computed(() =>
+  entityMode.value === "fund"
+    ? t("dashboard.noFundDesc")
+    : t("giveawaydashboard.noGiveawayDesc"),
+);
+const noEntityCta = computed(() =>
+  entityMode.value === "fund"
+    ? t("common.createFund")
+    : t("common.createGiveaway"),
+);
 
 const walletOptions = computed<SelectorOption[]>(() =>
   wallets.value.map((w) => ({
     value: w.id,
     label: w.name,
-  })),
-);
-
-const fundOptions = computed<SelectorOption[]>(() =>
-  funds.value.map((f) => ({
-    value: f.id,
-    label: f.label,
   })),
 );
 
@@ -322,21 +405,19 @@ watch(
     filters.sortRules.value,
   ],
   () => {
-    if (currentFund.value && !loadingTransactions.value) {
+    if (currentEntity.value && !loadingTransactions.value) {
       loadTransactions();
     }
   },
   { deep: true },
 );
 
+// Reload transactions when the current fund OR giveaway changes.
 watch(
-  currentFund,
-  async (fund, oldFund) => {
-    if (fund) {
-      // Reset filters when switching to a different fund
-      if (oldFund && fund.id !== oldFund.id) {
-        filters.resetFilters();
-      }
+  () => [entityMode.value, currentFund.value?.id, currentGiveaway.value?.id],
+  async () => {
+    if (currentEntity.value) {
+      filters.resetFilters();
       await loadTransactions();
     }
   },
@@ -347,18 +428,41 @@ async function onWalletChange(walletId: string) {
   switchingWallet.value = true;
   try {
     await store.selectWallet(walletId);
-    // selectWallet already loads funds and sets currentFund
+    // selectWallet loads both funds and giveaways and sets currentFund/currentGiveaway
   } finally {
     switchingWallet.value = false;
   }
 }
 
-async function onFundChange(fundId: string) {
-  switchingFund.value = true;
+function switchMode(mode: "fund" | "giveaway") {
+  if (store.entityMode === mode) return;
+  store.entityMode = mode;
+  // If the current wallet has entities of the new mode, ensure the first is selected;
+  // the watch on currentFund/currentGiveaway will reload transactions.
+  if (mode === "fund" && store.currentFund) {
+    // already set by store
+  } else if (mode === "giveaway" && store.currentGiveaway) {
+    // already set by store
+  }
+}
+
+async function onEntityChange(entityId: string) {
+  switchingEntity.value = true;
   try {
-    await store.selectFund(fundId);
+    if (entityMode.value === "fund") {
+      await store.selectFund(entityId);
+    } else {
+      await store.selectGiveaway(entityId);
+    }
   } finally {
-    switchingFund.value = false;
+    switchingEntity.value = false;
+  }
+}
+
+async function onGiveawayPicked(updated: Giveaway) {
+  // Update the store's currentGiveaway with the closed result (winner set).
+  if (store.currentGiveaway) {
+    store.currentGiveaway = { ...store.currentGiveaway, ...updated };
   }
 }
 
@@ -366,14 +470,14 @@ async function login() {
   if (!apiKeyInput.value.trim()) return;
   const ok = await store.validateAndSetApiKey(apiKeyInput.value.trim());
   if (ok) {
-    if (store.currentFund) {
+    if (currentEntity.value) {
       await loadTransactions();
     }
   }
 }
 
 async function loadTransactions() {
-  if (!currentFund.value) return;
+  if (!currentEntity.value) return;
   loadingTransactions.value = true;
   try {
     const allTransactions: Transaction[] = [];
@@ -381,8 +485,12 @@ async function loadTransactions() {
     let hasMorePages = true;
 
     while (hasMorePages) {
-      const response = await fundsApi.transactions(
-        currentFund.value.id,
+      const apiCall =
+        entityMode.value === "fund"
+          ? fundsApi.transactions
+          : giveawaysApi.transactions;
+      const response = await apiCall(
+        currentEntity.value.id,
         cursor as string | undefined,
         100,
         filters.buildFilters(),
@@ -403,11 +511,15 @@ async function loadTransactions() {
 }
 
 async function loadMoreTransactions() {
-  if (!currentFund.value || !nextCursor.value) return;
+  if (!currentEntity.value || !nextCursor.value) return;
   loadingMore.value = true;
   try {
-    const response = await fundsApi.transactions(
-      currentFund.value.id,
+    const apiCall =
+      entityMode.value === "fund"
+        ? fundsApi.transactions
+        : giveawaysApi.transactions;
+    const response = await apiCall(
+      currentEntity.value.id,
       nextCursor.value,
       20,
       filters.buildFilters(),
@@ -428,13 +540,20 @@ function resetFiltersAndReload() {
 }
 
 async function refreshData() {
-  if (!currentFund.value || !currentWallet.value) return;
+  if (!currentEntity.value || !currentWallet.value) return;
   refreshing.value = true;
   try {
-    await Promise.all([
-      store.fetchFund(currentFund.value.id),
-      store.fetchWallet(currentWallet.value.id),
-    ]);
+    if (entityMode.value === "fund") {
+      await Promise.all([
+        store.fetchFund(currentEntity.value.id),
+        store.fetchWallet(currentWallet.value.id),
+      ]);
+    } else {
+      await Promise.all([
+        store.fetchGiveaway(currentEntity.value.id),
+        store.fetchWallet(currentWallet.value.id),
+      ]);
+    }
     await loadTransactions();
   } finally {
     refreshing.value = false;
@@ -443,7 +562,7 @@ async function refreshData() {
 
 async function retryLoad() {
   await store.loadFund();
-  if (currentFund.value) {
+  if (currentEntity.value) {
     await loadTransactions();
   }
 }

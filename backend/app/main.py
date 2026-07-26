@@ -56,24 +56,28 @@ def create_app() -> FastAPI:
         events,
         exports,
         funds,
+        fund_widget,
+        giveaways,
+        giveaway_widget,
         health,
         posts,
         reports,
         transactions,
         wallets,
-        widget,
     )
     from app.api.v1.endpoints import settings as settings_mod
 
     app.include_router(wallets.router, prefix="/api/v1")
     app.include_router(funds.router, prefix="/api/v1")
+    app.include_router(giveaways.router, prefix="/api/v1")
     app.include_router(transactions.router, prefix="/api/v1")
     app.include_router(reports.router, prefix="/api/v1")
     app.include_router(exports.router, prefix="/api/v1")
     app.include_router(events.router, prefix="/api/v1")
     app.include_router(posts.router, prefix="/api/v1")
     app.include_router(settings_mod.router, prefix="/api/v1")
-    app.include_router(widget.router)
+    app.include_router(fund_widget.router)
+    app.include_router(giveaway_widget.router)
     app.include_router(health.router)
 
     @app.on_event("startup")

@@ -1,5 +1,5 @@
 import { ref, onUnmounted } from 'vue'
-import { fundsApi, getApiKey } from '@/lib/api'
+import { getApiKey } from '@/lib/api'
 
 export function useSSE(fundId: string) {
   const events = ref<any[]>([])

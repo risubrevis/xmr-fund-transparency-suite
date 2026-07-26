@@ -1,19 +1,27 @@
 """Generate widget PNG images in multiple formats (business card, wide, vertical)."""
 
 import io
-from typing import Literal
+from typing import Literal, cast
 
 import qrcode
 from PIL import Image, ImageDraw, ImageFont
+from qrcode.constants import ERROR_CORRECT_M
+from qrcode.image.pil import PilImage
 
 # Standard business card dimensions (ISO/IEC 7810 ID-1, same as credit card)
 DPI = 300
+
+# PIL font — union of the truetype font and the bitmap default font
+Font = ImageFont.FreeTypeFont | ImageFont.ImageFont
 
 FORMATS = {
     "business_card": {"width_mm": 85.6, "height_mm": 53.98, "label": "Business Card"},
     "wide": {"width_mm": 190, "height_mm": 65, "label": "Wide"},
     "vertical": {"width_mm": 80, "height_mm": 130, "label": "Vertical"},
 }
+
+WidgetFormat = Literal["business_card", "wide", "vertical"]
+"""Type of widget PNG layout. Keys of :data:`FORMATS`."""
 
 # Font paths — DejaVu Sans available in Docker container
 FONT_DIR = "/usr/share/fonts/truetype/dejavu"
@@ -24,7 +32,7 @@ def mm_to_px(mm: float) -> int:
     return int(mm * DPI / 25.4)
 
 
-def _load_font(name: str, size: int) -> ImageFont.FreeTypeFont:
+def _load_font(name: str, size: int) -> Font:
     """Load a font with fallback to default."""
     try:
         return ImageFont.truetype(f"{FONT_DIR}/{name}", size)
@@ -101,6 +109,7 @@ def generate_gradient(
 
     img = Image.new("RGB", (width, height))
     pixels = img.load()
+    assert pixels is not None  # freshly created image — load() always returns PixelAccess
 
     # Diagonal gradient: interpolation based on position along the diagonal
     max_dist = width + height
@@ -122,7 +131,7 @@ def _draw_text_wrapped(
     x: int,
     y: int,
     max_width: int,
-    font: ImageFont.FreeTypeFont,
+    font: Font,
     fill: tuple[int, int, int],
     line_spacing: int = 4,
 ) -> int:
@@ -150,7 +159,7 @@ def _draw_text_wrapped(
     for line in lines:
         draw.text((x, y), line, font=font, fill=fill)
         bbox = font.getbbox(line)
-        line_height = bbox[3] - bbox[1]
+        line_height = int(bbox[3] - bbox[1])
         y += line_height + line_spacing
 
     return y
@@ -160,13 +169,15 @@ def _generate_qr_image(address: str, size: int) -> Image.Image:
     """Generate a QR code image for a Monero address."""
     qr = qrcode.QRCode(
         version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        error_correction=ERROR_CORRECT_M,
         box_size=8,
         border=2,
     )
     qr.add_data(f"monero:{address}")
     qr.make(fit=True)
-    img = qr.make_image(fill_color="#000000", back_color="#ffffff")
+    # make_image() is typed as BaseImage (no convert/resize), but the default
+    # factory returns a PilImage whose underlying PIL image supports both.
+    img = cast(PilImage, qr.make_image(fill_color="#000000", back_color="#ffffff"))
     img = img.convert("RGBA")
     # Resize to exact target size
     return img.resize((size, size), Image.Resampling.LANCZOS)
@@ -181,7 +192,7 @@ def generate_widget_png(
     total_received_xmr: str,
     base_color: str,
     text_color: str,
-    format_type: Literal["business_card", "wide", "vertical"],
+    format_type: WidgetFormat,
 ) -> bytes:
     """Generate a widget PNG image in the specified format.
 
@@ -305,12 +316,12 @@ def _draw_horizontal_layout(
     target_amount_xmr: str | None,
     total_received_xmr: str,
     text_rgb: tuple[int, int, int],
-    font_label: ImageFont.FreeTypeFont,
-    font_website: ImageFont.FreeTypeFont,
-    font_desc: ImageFont.FreeTypeFont,
-    font_amount: ImageFont.FreeTypeFont,
-    font_addr: ImageFont.FreeTypeFont,
-    font_powered: ImageFont.FreeTypeFont,
+    font_label: Font,
+    font_website: Font,
+    font_desc: Font,
+    font_amount: Font,
+    font_addr: Font,
+    font_powered: Font,
     qr_size: int,
 ) -> None:
     """Draw business card and wide (horizontal) layouts."""
@@ -321,7 +332,7 @@ def _draw_horizontal_layout(
     # === Left side: label, website, description, amounts ===
     draw.text((pad, y), label, font=font_label, fill=text_rgb)
     bbox = font_label.getbbox(label)
-    y += bbox[3] - bbox[1] + mm_to_px(1)
+    y += int(bbox[3] - bbox[1]) + mm_to_px(1)
 
     if public_website:
         draw.text((pad, y), public_website, font=font_website, fill=(*text_rgb[:3],))
@@ -329,7 +340,7 @@ def _draw_horizontal_layout(
         dimmed = tuple(max(0, int(c * 0.7 + 255 * 0.3)) for c in text_rgb)
         draw.text((pad, y), public_website, font=font_website, fill=dimmed)
         bbox = font_website.getbbox(public_website)
-        y += bbox[3] - bbox[1] + mm_to_px(1.5)
+        y += int(bbox[3] - bbox[1]) + mm_to_px(1.5)
 
     if description:
         y = _draw_text_wrapped(
@@ -341,12 +352,12 @@ def _draw_horizontal_layout(
     received_text = f"{total_received_xmr} XMR"
     draw.text((pad, y), received_text, font=font_amount, fill=text_rgb)
     bbox = font_amount.getbbox(received_text)
-    y += bbox[3] - bbox[1] + mm_to_px(1)
+    y += int(bbox[3] - bbox[1]) + mm_to_px(1)
 
     if target_amount_xmr:
         target_text = f"Target: {target_amount_xmr} XMR"
         draw.text((pad, y), target_text, font=font_desc, fill=text_rgb)
-        y += font_desc.getbbox(target_text)[3] - font_desc.getbbox(target_text)[1]
+        y += int(font_desc.getbbox(target_text)[3] - font_desc.getbbox(target_text)[1])
 
     # === Right side: QR code ===
     qr_img = _generate_qr_image(deposit_address, qr_size)
@@ -388,12 +399,12 @@ def _draw_vertical_layout(
     target_amount_xmr: str | None,
     total_received_xmr: str,
     text_rgb: tuple[int, int, int],
-    font_label: ImageFont.FreeTypeFont,
-    font_website: ImageFont.FreeTypeFont,
-    font_desc: ImageFont.FreeTypeFont,
-    font_amount: ImageFont.FreeTypeFont,
-    font_addr: ImageFont.FreeTypeFont,
-    font_powered: ImageFont.FreeTypeFont,
+    font_label: Font,
+    font_website: Font,
+    font_desc: Font,
+    font_amount: Font,
+    font_addr: Font,
+    font_powered: Font,
     qr_size: int,
 ) -> None:
     """Draw vertical layout: description at top, QR center, address below."""
@@ -403,13 +414,13 @@ def _draw_vertical_layout(
     # === Top: label, website, description, amounts ===
     draw.text((pad, y), label, font=font_label, fill=text_rgb)
     bbox = font_label.getbbox(label)
-    y += bbox[3] - bbox[1] + mm_to_px(1)
+    y += int(bbox[3] - bbox[1]) + mm_to_px(1)
 
     if public_website:
         dimmed = tuple(max(0, int(c * 0.7 + 255 * 0.3)) for c in text_rgb)
         draw.text((pad, y), public_website, font=font_website, fill=dimmed)
         bbox = font_website.getbbox(public_website)
-        y += bbox[3] - bbox[1] + mm_to_px(1.5)
+        y += int(bbox[3] - bbox[1]) + mm_to_px(1.5)
 
     if description:
         y = _draw_text_wrapped(
@@ -421,12 +432,12 @@ def _draw_vertical_layout(
     received_text = f"{total_received_xmr} XMR"
     draw.text((pad, y), received_text, font=font_amount, fill=text_rgb)
     bbox = font_amount.getbbox(received_text)
-    y += bbox[3] - bbox[1] + mm_to_px(1)
+    y += int(bbox[3] - bbox[1]) + mm_to_px(1)
 
     if target_amount_xmr:
         target_text = f"Target: {target_amount_xmr} XMR"
         draw.text((pad, y), target_text, font=font_desc, fill=text_rgb)
-        y += font_desc.getbbox(target_text)[3] - font_desc.getbbox(target_text)[1]
+        y += int(font_desc.getbbox(target_text)[3] - font_desc.getbbox(target_text)[1])
 
     y += mm_to_px(3)
 
@@ -443,7 +454,7 @@ def _draw_vertical_layout(
         line_width = line_bbox[2] - line_bbox[0]
         line_x = (width - line_width) // 2
         draw.text((line_x, y), line, font=font_addr, fill=text_rgb)
-        y += line_bbox[3] - line_bbox[1] + mm_to_px(1)
+        y += int(line_bbox[3] - line_bbox[1]) + mm_to_px(1)
 
     # === Powered by — bottom left ===
     dimmed = tuple(max(0, int(c * 0.6)) for c in text_rgb)
@@ -455,7 +466,7 @@ def _draw_vertical_layout(
     )
 
 
-def _wrap_text(text: str, max_width: int, font: ImageFont.FreeTypeFont) -> list[str]:
+def _wrap_text(text: str, max_width: int, font: Font) -> list[str]:
     """Wrap text to fit within max_width, breaking at character boundaries for addresses."""
     if not text:
         return []

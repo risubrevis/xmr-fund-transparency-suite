@@ -62,8 +62,12 @@ All times are returned in ISO 8601 format unless a custom datetime pattern is co
 |--------|----------|-------------|
 | `GET` | `/api/v1/posts` | List posts (filter by `fund_id`, `wallet_id`, `start_date`, `end_date`) |
 | `GET` | `/api/v1/wallets/{id}/posts` | List all posts for a wallet across its funds |
-| `GET` | `/widget/{uuid}.js` | Embeddable JavaScript widget (QR code + news) |
-| `GET` | `/widget/{uuid}.json` | Widget JSON data |
-| `GET` | `/widget/{uuid}/posts.json` | Widget posts JSON |
-| `GET` | `/widget/{uuid}/export/{format}` | Public widget export (`pdf`, `xlsx`, `csv`, `xml`, `json`; scoped to the widget's fund) |
+| `GET` | `/widget/fund/{uuid}.js` | Embeddable JavaScript fund widget (QR code + news) |
+| `GET` | `/widget/fund/{uuid}.json` | Fund widget JSON data |
+| `GET` | `/widget/fund/{uuid}/posts.json` | Fund widget posts JSON |
+| `GET` | `/widget/fund/{uuid}/export/{format}` | Public fund widget export (`pdf`, `xlsx`, `csv`, `xml`, `json`; scoped to the widget's fund) |
+| `GET` | `/widget/giveaway/{uuid}.js` | Embeddable JavaScript giveaway widget (countdown or winner) |
+| `GET` | `/widget/giveaway/{uuid}.json` | Giveaway widget JSON data |
+| `GET` | `/widget/giveaway/{uuid}/posts.json` | Giveaway widget posts JSON |
+| `GET` | `/widget/giveaway/{uuid}/export/{format}` | Public giveaway widget export (`csv`, `xml`, `json`; scoped to the widget's giveaway) |
 | `GET` | `/health` | Healthcheck with DB, Redis, RPC, and scanner status |

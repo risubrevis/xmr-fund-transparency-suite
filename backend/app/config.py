@@ -18,6 +18,12 @@ class Settings(BaseSettings):
 
     # Monero RPC
     monero_rpc_url: str = "http://localhost:18082/json_rpc"
+    # Daemon address (host:port) used to fetch block headers for provably-fair
+    # giveaway winner selection. Defaults to a public restricted-RPC node.
+    monero_daemon_address: str = "xmr.letmego.me:18089"
+    # Full daemon JSON-RPC URL override. When set, takes precedence over the
+    # derived value from monero_daemon_address.
+    monero_daemon_rpc_url: str = ""
 
     # Auth
     api_key: str = "changeme"
@@ -52,6 +58,19 @@ class Settings(BaseSettings):
         """Full origin URL derived from APP_URL and ENVIRONMENT."""
         scheme = "https" if self.is_production else "http"
         return f"{scheme}://{self.app_url}"
+
+    @property
+    def daemon_rpc_url(self) -> str:
+        """Daemon JSON-RPC endpoint used to read block headers.
+
+        Prefer an explicit MONERO_DAEMON_RPC_URL override. Otherwise derive
+        from MONERO_DAEMON_ADDRESS: HTTPS when the port is 443, else HTTP.
+        """
+        if self.monero_daemon_rpc_url:
+            return self.monero_daemon_rpc_url.rstrip("/")
+        host = self.monero_daemon_address
+        scheme = "https" if host.endswith(":443") else "http"
+        return f"{scheme}://{host}/json_rpc"
 
     @property
     def effective_cors_origins(self) -> list[str]:

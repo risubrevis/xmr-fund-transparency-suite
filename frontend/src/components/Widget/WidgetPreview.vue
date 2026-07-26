@@ -251,7 +251,7 @@
           class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto"
         >
           &lt;div id="xmr-fund-widget"&gt;&lt;/div&gt;<br />
-          &lt;script src="{{ baseUrl }}/widget/{{
+          &lt;script src="{{ baseUrl }}/widget/fund/{{
             publicUuid
           }}.js"&gt;&lt;/script&gt;
         </div>
@@ -261,7 +261,7 @@
         <div
           class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto"
         >
-          {{ baseUrl }}/widget/{{ publicUuid }}.json
+          {{ baseUrl }}/widget/fund/{{ publicUuid }}.json
         </div>
       </div>
       <p class="text-xs text-gray-500 flex items-center space-x-1">
@@ -336,7 +336,6 @@ const hasMorePosts = ref(false);
 const loadingMore = ref(false);
 const hasPosts = ref(false);
 const freshPostsCount = ref(0);
-let newsLoaded = false;
 let postsOffset = 0;
 
 const displayAddress = computed(() => {
@@ -354,7 +353,7 @@ const jsonUrl = computed(() => publicWidgetExportUrl(props.publicUuid, "json"));
 
 function getPostsBaseUrl(): string {
   const base = import.meta.env.VITE_API_BASE || "";
-  return `${base}/widget/${props.publicUuid}`;
+  return `${base}/widget/fund/${props.publicUuid}`;
 }
 
 async function toggleNews() {
@@ -364,14 +363,12 @@ async function toggleNews() {
     posts.value = [];
     hasMorePosts.value = false;
     postsOffset = 0;
-    newsLoaded = false;
     await fetchPosts();
   } else {
     // Clear loaded posts on collapse so next expand fetches fresh
     posts.value = [];
     hasMorePosts.value = false;
     postsOffset = 0;
-    newsLoaded = false;
   }
 }
 
@@ -393,7 +390,7 @@ async function checkHasPosts() {
       try {
         const widgetBase = import.meta.env.VITE_API_BASE || "";
         const widgetRes = await fetch(
-          `${widgetBase}/widget/${props.publicUuid}.json`,
+          `${widgetBase}/widget/fund/${props.publicUuid}.json`,
         );
         if (widgetRes.ok) {
           const widgetData = await widgetRes.json();
@@ -419,7 +416,6 @@ async function fetchPosts() {
     posts.value = data.posts;
     hasMorePosts.value = data.has_more;
     postsOffset = data.posts.length;
-    newsLoaded = true;
   } catch {
     newsError.value = true;
   } finally {

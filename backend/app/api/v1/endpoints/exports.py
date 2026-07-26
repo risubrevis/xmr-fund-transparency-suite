@@ -61,7 +61,7 @@ async def _get_filtered_transactions(
         query = query.order_by(clause)
 
     result = await db.execute(query)
-    return result.scalars().all()
+    return list(result.scalars().all())
 
 
 def _tx_to_dict(tx: Transaction) -> dict:

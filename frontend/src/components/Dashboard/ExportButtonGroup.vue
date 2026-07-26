@@ -80,12 +80,14 @@ import {
 } from "@lucide/vue";
 import {
   fundsApi,
+  giveawaysApi,
   type ExportFormat,
   type TransactionFilters,
 } from "@/lib/api";
 
 const props = defineProps<{
-  fundId: string;
+  entityId: string;
+  entityType?: "fund" | "giveaway";
   filters?: TransactionFilters;
 }>();
 
@@ -106,15 +108,19 @@ async function exportFile(format: ExportFormat) {
   exportingFormat.value = format;
 
   try {
-    const response = await fundsApi.exportFile(
-      props.fundId,
+    const apiCall =
+      props.entityType === "giveaway"
+        ? giveawaysApi.exportFile
+        : fundsApi.exportFile;
+    const response = await apiCall(
+      props.entityId,
       format,
       props.filters,
     );
     const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement("a");
     link.href = url;
-    link.download = `export_${props.fundId}.${EXT_MAP[format]}`;
+    link.download = `export_${props.entityId}.${EXT_MAP[format]}`;
     link.click();
     window.URL.revokeObjectURL(url);
   } catch (err) {

@@ -1,11 +1,22 @@
+"""Public (no-auth) embeddable widget endpoints for funds.
+
+Routes (mounted at root, no /api/v1 prefix):
+    GET /widget/fund/{public_uuid}.js              — embeddable JS widget
+    GET /widget/fund/{public_uuid}.json            — widget data
+    GET /widget/fund/{public_uuid}/posts.json      — widget news posts
+    GET /widget/fund/{public_uuid}/export/{format} — public export (pdf, xlsx, csv, xml, json)
+"""
+
 import base64
 import io
 from datetime import datetime, timedelta, timezone
-from typing import List
+from typing import List, cast
 
 import qrcode
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
+from qrcode.constants import ERROR_CORRECT_M
+from qrcode.image.pil import PilImage
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,20 +48,22 @@ def _generate_qr_data_url(data: str, size: int = 200) -> str:
     """Generate a QR code as a base64 PNG data URL."""
     qr = qrcode.QRCode(
         version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_M,
+        error_correction=ERROR_CORRECT_M,
         box_size=6,
         border=2,
     )
     qr.add_data(data)
     qr.make(fit=True)
-    img = qr.make_image(fill_color="#000000", back_color="#ffffff")
+    # make_image() is typed as BaseImage (save has no `format` kwarg), but the
+    # default factory returns a PilImage whose save() accepts format=.
+    img = cast(PilImage, qr.make_image(fill_color="#000000", back_color="#ffffff"))
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     b64 = base64.b64encode(buf.getvalue()).decode("ascii")
     return f"data:image/png;base64,{b64}"
 
 
-WIDGET_JS_TEMPLATE = """
+FUND_WIDGET_JS_TEMPLATE = """
 function xmrCopyAddr(btn) {
     var addr = btn.getAttribute('data-addr');
     function done() { btn.textContent = 'Copy Address'; }
@@ -119,7 +132,7 @@ function xmrFetchNews() {
         container.innerHTML = '<div style="text-align:center;padding:8px;opacity:0.7;">Loading...</div>';
     }
     var btn = document.getElementById('xmr-news-more');
-    fetch('APP_ORIGIN_PLACEHOLDER/widget/' + xmrNewsUuid + '/posts.json?limit=5&offset=' + xmrNewsOffset)
+    fetch('APP_ORIGIN_PLACEHOLDER/widget/fund/' + xmrNewsUuid + '/posts.json?limit=5&offset=' + xmrNewsOffset)
         .then(function(r) { return r.json(); })
         .then(function(data) {
             if (xmrNewsOffset === 0) {
@@ -213,7 +226,7 @@ function xmrLoadMoreNews() {
         return hslToHex(hsl[0] + degrees, hsl[1], hsl[2]);
     }
 
-    fetch('APP_ORIGIN_PLACEHOLDER/widget/UUID_PLACEHOLDER.json')
+    fetch('APP_ORIGIN_PLACEHOLDER/widget/fund/UUID_PLACEHOLDER.json')
         .then(function(r) { return r.json(); })
         .then(function(data) {
             var baseColor = data.base_color || '#667eea';
@@ -223,7 +236,7 @@ function xmrLoadMoreNews() {
                 parseInt(textColor.slice(1, 3), 16) + ',' +
                 parseInt(textColor.slice(3, 5), 16) + ',' +
                 parseInt(textColor.slice(5, 7), 16) + ',0.3)';
-            var exportBase = 'APP_ORIGIN_PLACEHOLDER/widget/UUID_PLACEHOLDER/export/';
+            var exportBase = 'APP_ORIGIN_PLACEHOLDER/widget/fund/UUID_PLACEHOLDER/export/';
             var btnStyle = 'display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.85;text-decoration:none;margin-right:4px;';
             var downloadsHtml =
                 '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px;">' +
@@ -316,8 +329,8 @@ function xmrLoadMoreNews() {
 """
 
 
-@router.get("/widget/{uuid}.js")
-async def get_widget_js(
+@router.get("/widget/fund/{uuid}.js")
+async def get_fund_widget_js(
     uuid: str,
     request: Request,
     db: AsyncSession = Depends(get_db),
@@ -332,7 +345,7 @@ async def get_widget_js(
     # Use configured app origin so widget URLs are always correct
     origin = settings.app_origin
 
-    widget_js = WIDGET_JS_TEMPLATE.replace("UUID_PLACEHOLDER", uuid).replace(
+    widget_js = FUND_WIDGET_JS_TEMPLATE.replace("UUID_PLACEHOLDER", uuid).replace(
         "APP_ORIGIN_PLACEHOLDER", origin
     )
 
@@ -357,8 +370,8 @@ async def _get_fund_by_uuid(uuid: str, db: AsyncSession) -> Fund:
     return fund
 
 
-@router.get("/widget/{uuid}/posts.json")
-async def get_widget_posts(
+@router.get("/widget/fund/{uuid}/posts.json")
+async def get_fund_widget_posts(
     uuid: str,
     limit: int = Query(5, ge=1, le=20),
     offset: int = Query(0, ge=0),
@@ -370,7 +383,7 @@ async def get_widget_posts(
     count_result = await db.execute(
         select(func.count(Post.id)).where(Post.fund_id == fund.id)
     )
-    total = count_result.scalar()
+    total = count_result.scalar() or 0
 
     result = await db.execute(
         select(Post)
@@ -405,8 +418,8 @@ async def get_widget_posts(
     )
 
 
-@router.get("/widget/{uuid}/export/{export_format}")
-async def public_widget_export(
+@router.get("/widget/fund/{uuid}/export/{export_format}")
+async def public_fund_export(
     uuid: str,
     export_format: str,
     start_date: datetime | None = Query(None),
@@ -538,7 +551,7 @@ async def public_widget_export(
             },
         )
 
-    if export_format == "csv":
+    elif export_format == "csv":
         data = generate_csv_export(
             transactions=tx_dicts,
             fund_label=fund.label,
@@ -571,25 +584,25 @@ async def public_widget_export(
             },
         )
 
-    elif export_format == "json":
-        data = generate_json_export(
-            transactions=tx_dicts,
-            fund_label=fund.label,
-            fund_id=fund_id_str,
-            datetime_format=dt_format,
-            filter_metadata=filter_meta_or_none,
-        )
-        return Response(
-            content=data,
-            media_type="application/json",
-            headers={
-                "Content-Disposition": f"attachment; filename=export_{fund_id_str}.json",
-            },
-        )
+    # json (final fallthrough — export_format is validated against PUBLIC_EXPORT_FORMATS above)
+    data = generate_json_export(
+        transactions=tx_dicts,
+        fund_label=fund.label,
+        fund_id=fund_id_str,
+        datetime_format=dt_format,
+        filter_metadata=filter_meta_or_none,
+    )
+    return Response(
+        content=data,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": f"attachment; filename=export_{fund_id_str}.json",
+        },
+    )
 
 
-@router.get("/widget/{uuid}.json")
-async def get_widget_json(
+@router.get("/widget/fund/{uuid}.json")
+async def get_fund_widget_json(
     uuid: str,
     request: Request,
     db: AsyncSession = Depends(get_db),

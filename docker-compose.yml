@@ -76,6 +76,8 @@ services:
       DATABASE_URL: postgresql+asyncpg://xmruser:${DB_PASSWORD}@postgres/xmrdashboard
       REDIS_URL: redis://redis:6379
       MONERO_RPC_URL: http://monero-wallet-rpc:18082/json_rpc
+      MONERO_DAEMON_ADDRESS: ${MONERO_DAEMON_ADDRESS}
+      MONERO_DAEMON_RPC_URL: ${MONERO_DAEMON_RPC_URL}
       API_KEY: ${API_KEY}
       VIEW_KEY_MASTER_SECRET: ${VIEW_KEY_MASTER_SECRET}
       SETTINGS_FILE_PATH: /app/data/settings.json
