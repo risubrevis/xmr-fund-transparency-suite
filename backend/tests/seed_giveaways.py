@@ -283,11 +283,11 @@ async def seed() -> None:
             tag = (
                 "CLOSED"
                 if g.is_closed
-                else "scheduled"
-                if now < g.start_date
-                else "active"
-                if now < g.end_date
-                else "ended"
+                else (
+                    "scheduled"
+                    if now < g.start_date
+                    else "active" if now < g.end_date else "ended"
+                )
             )
             print(
                 f"  • [{tag:9}] {g.title}  min={g.min_amount_xmr} XMR  "

@@ -249,9 +249,7 @@ async def update_fund(
                 new_address=body.deposit_address[:12] + "...",
             )
             # Delete all transactions for this fund (they were for the old address)
-            await db.execute(
-                delete(Transaction).where(Transaction.fund_id == fund_id)
-            )
+            await db.execute(delete(Transaction).where(Transaction.fund_id == fund_id))
             # Reset wallet scan progress so the scanner re-scans
             wallet_result = await db.execute(
                 select(Wallet).where(Wallet.id == fund.wallet_id)
@@ -321,9 +319,7 @@ async def delete_fund(
         raise HTTPException(status_code=404, detail="Fund not found")
 
     # Delete transactions and posts first (cascade should handle this, but be explicit)
-    await db.execute(
-        delete(Transaction).where(Transaction.fund_id == fund_id)
-    )
+    await db.execute(delete(Transaction).where(Transaction.fund_id == fund_id))
     await db.execute(delete(Post).where(Post.fund_id == fund_id))
     await db.delete(fund)
     await db.commit()

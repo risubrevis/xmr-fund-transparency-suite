@@ -502,11 +502,11 @@ async def seed() -> None:
             state = (
                 "closed"
                 if g.is_closed
-                else "scheduled"
-                if now < g.start_date
-                else "active"
-                if now < g.end_date
-                else "ended"
+                else (
+                    "scheduled"
+                    if now < g.start_date
+                    else "active" if now < g.end_date else "ended"
+                )
             )
             gtxs = [t for t in txs if t.giveaway_id == g.id]
             below = sum(1 for t in gtxs if t.amount_xmr < g.min_amount_xmr)

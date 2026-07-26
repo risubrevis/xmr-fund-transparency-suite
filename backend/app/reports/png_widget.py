@@ -109,7 +109,9 @@ def generate_gradient(
 
     img = Image.new("RGB", (width, height))
     pixels = img.load()
-    assert pixels is not None  # freshly created image — load() always returns PixelAccess
+    assert (
+        pixels is not None
+    )  # freshly created image — load() always returns PixelAccess
 
     # Diagonal gradient: interpolation based on position along the diagonal
     max_dist = width + height

@@ -81,7 +81,9 @@ def upgrade() -> None:
 def downgrade() -> None:
     op.drop_constraint("tx_fund_xor_giveaway", "transactions", type_="check")
     op.drop_index(op.f("ix_transactions_giveaway_id"), table_name="transactions")
-    op.drop_constraint("fk_transactions_giveaway_id", "transactions", type_="foreignkey")
+    op.drop_constraint(
+        "fk_transactions_giveaway_id", "transactions", type_="foreignkey"
+    )
     op.drop_column("transactions", "giveaway_id")
     op.drop_index(op.f("ix_giveaways_public_uuid"), table_name="giveaways")
     op.drop_table("giveaways")

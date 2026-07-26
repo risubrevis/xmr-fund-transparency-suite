@@ -338,9 +338,7 @@ async def update_giveaway(
                     )
                 # Wipe recorded transactions for the old address; rescan will refill.
                 await db.execute(
-                    delete(Transaction).where(
-                        Transaction.giveaway_id == giveaway_id
-                    )
+                    delete(Transaction).where(Transaction.giveaway_id == giveaway_id)
                 )
                 wres = await db.execute(
                     select(Wallet).where(Wallet.id == giveaway.wallet_id)
@@ -379,9 +377,7 @@ async def delete_giveaway(
     if not giveaway:
         raise HTTPException(status_code=404, detail="Giveaway not found")
     # Explicit to avoid the circular winning_transaction_id reference.
-    await db.execute(
-        delete(Transaction).where(Transaction.giveaway_id == giveaway_id)
-    )
+    await db.execute(delete(Transaction).where(Transaction.giveaway_id == giveaway_id))
     await db.delete(giveaway)
     await db.commit()
     logger.info("giveaway_deleted", giveaway_id=str(giveaway_id))
