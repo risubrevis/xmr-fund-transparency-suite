@@ -8,7 +8,11 @@ from fastapi.responses import Response
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.v1.endpoints.fund_widget import _generate_qr_data_url
+from app.services.qr import (
+    QR_PNG_SIZES,
+    generate_qr_data_url,
+    generate_qr_png,
+)
 from app.auth import verify_api_key
 from app.database import get_db
 from app.logging import get_logger
@@ -385,6 +389,44 @@ async def download_widget_png(
     )
 
 
+@router.get("/funds/{fund_id}/qr-png")
+async def download_fund_qr_png(
+    fund_id: uuid.UUID,
+    size: int = Query(
+        256, description="Image size in pixels: 48, 96, 128, 256, 512"
+    ),
+    db: AsyncSession = Depends(get_db),
+    api_key: str = Depends(verify_api_key),
+) -> Response:
+    """Download the fund's deposit-address QR code as a PNG at the requested size."""
+    if size not in QR_PNG_SIZES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid size. Choose from: {', '.join(str(s) for s in QR_PNG_SIZES)}",
+        )
+
+    result = await db.execute(select(Fund).where(Fund.id == fund_id))
+    fund = result.scalar_one_or_none()
+    if not fund:
+        raise HTTPException(status_code=404, detail="Fund not found")
+
+    wallet_res = await db.execute(
+        select(Wallet.uuid).where(Wallet.id == fund.wallet_id)
+    )
+    wallet_uuid = wallet_res.scalar_one_or_none()
+
+    png_bytes = generate_qr_png(f"monero:{fund.deposit_address}", size)
+    filename = f"QR_Code_{wallet_uuid}_{fund.public_uuid}_{size}.png"
+
+    return Response(
+        content=png_bytes,
+        media_type="image/png",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+        },
+    )
+
+
 @router.get("/funds/{fund_id}/static-widget")
 async def get_static_widget(
     fund_id: uuid.UUID,
@@ -401,5 +443,5 @@ async def get_static_widget(
     if not fund:
         raise HTTPException(status_code=404, detail="Fund not found")
 
-    qr_data_url = _generate_qr_data_url(fund.deposit_address, size=200)
+    qr_data_url = generate_qr_data_url(fund.deposit_address, size=200)
     return {"qr_data_url": qr_data_url}

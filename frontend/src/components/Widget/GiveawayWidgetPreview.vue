@@ -1,8 +1,16 @@
 <template>
   <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-    <h3 class="text-lg font-semibold text-gray-900 mb-1">
-      {{ t("giveawaydetail.widgetPreview") }}
-    </h3>
+    <div class="flex items-center justify-between mb-1">
+      <h3 class="text-lg font-semibold text-gray-900">
+        {{ t("giveawaydetail.widgetPreview") }}
+      </h3>
+      <DropdownDownload
+        :label="t('giveawaydetail.downloadQr')"
+        :icon="QrCode"
+        :options="qrOptions"
+        min-width="160px"
+      />
+    </div>
     <p class="text-sm text-gray-600 mb-4">
       {{ t("widgetpreview.desc") }}
     </p>
@@ -164,8 +172,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
-import { Gift, Trophy, Loader2, FileCode, Braces } from "@lucide/vue";
+import { Gift, Trophy, Loader2, FileCode, Braces, QrCode } from "@lucide/vue";
 import QRCode from "qrcode";
+import DropdownDownload from "@/components/ui/DropdownDownload.vue";
 import { publicGiveawayWidgetExportUrl } from "@/lib/api";
 import { useI18n } from "@/composables/useI18n";
 
@@ -174,6 +183,7 @@ const { t } = useI18n();
 const props = withDefaults(
   defineProps<{
     publicUuid: string;
+    giveawayId: string;
     formLabel: string;
     formDescription?: string | null;
     formMinAmount?: string;
@@ -387,5 +397,20 @@ const appOrigin = import.meta.env.VITE_API_BASE || window.location.origin;
 const embedCode = computed(
   () =>
     `<div id="xmr-giveaway-widget"></div>\n<script src="${appOrigin}/widget/giveaway/${props.publicUuid}.js">${"\u003c/"}script>`,
+);
+
+// QR code PNG download options
+const qrSizes = [48, 96, 128, 256, 512];
+const qrPngExportUrl = (size: number) => {
+  const apiKey = localStorage.getItem("xmr_api_key") || "";
+  return `${appOrigin}/api/v1/giveaways/${props.giveawayId}/qr-png?size=${size}&api_key=${encodeURIComponent(apiKey)}`;
+};
+const qrOptions = computed(() =>
+  qrSizes.map((size) => ({
+    value: size,
+    label: `${size} × ${size}`,
+    hint: "px",
+    href: qrPngExportUrl(size),
+  })),
 );
 </script>

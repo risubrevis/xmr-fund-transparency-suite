@@ -414,6 +414,7 @@
       <!-- Section 3: Widget preview + embed -->
       <GiveawayWidgetPreview
         :public-uuid="giveaway.public_uuid"
+        :giveaway-id="giveaway.id"
         :form-label="form.title"
         :form-description="form.description"
         :form-min-amount="form.min_amount_xmr"

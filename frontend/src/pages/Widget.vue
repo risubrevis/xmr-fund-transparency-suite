@@ -35,7 +35,7 @@
         </Button>
       </div>
 
-      <WidgetPreview
+      <FundWidgetPreview
         :public-uuid="currentFund.public_uuid"
         :fund-label="currentFund.label"
         :fund-description="currentFund.description"
@@ -98,7 +98,7 @@ import { ref, computed, onMounted } from "vue";
 import { Code2, PlusCircle, RefreshCw, Loader2, Save } from "@lucide/vue";
 import { useFundStore } from "@/stores/fund";
 import { fundsApi } from "@/lib/api";
-import WidgetPreview from "@/components/Widget/WidgetPreview.vue";
+import FundWidgetPreview from "@/components/Widget/FundWidgetPreview.vue";
 import ColorPicker from "@/components/Widget/ColorPicker.vue";
 import { Button } from "@/components/ui/button";
 import { useI18n } from "@/composables/useI18n";

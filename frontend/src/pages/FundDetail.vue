@@ -293,46 +293,19 @@
           <h3 class="text-lg font-semibold text-gray-900">
             {{ t("funddetail.widgetPreview") }}
           </h3>
-          <div class="relative">
-            <Button
-              variant="outline"
-              size="sm"
-              class="flex items-center gap-1.5"
-              @click="showPngDropdown = !showPngDropdown"
-            >
-              <Download :size="14" />
-              {{ t("funddetail.printPng") }}
-              <ChevronDown :size="12" />
-            </Button>
-            <div
-              v-if="showPngDropdown"
-              class="absolute right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10 min-w-[200px]"
-            >
-              <a
-                :href="pngExportUrl('business_card')"
-                class="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                @click="showPngDropdown = false"
-              >
-                <span>{{ t("funddetail.businessCard") }}</span>
-                <span class="text-xs text-gray-400">85.6 × 54 mm</span>
-              </a>
-              <a
-                :href="pngExportUrl('wide')"
-                class="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                @click="showPngDropdown = false"
-              >
-                <span>{{ t("funddetail.wide") }}</span>
-                <span class="text-xs text-gray-400">190 × 65 mm</span>
-              </a>
-              <a
-                :href="pngExportUrl('vertical')"
-                class="flex items-center justify-between px-4 py-2 text-sm hover:bg-gray-50 transition-colors"
-                @click="showPngDropdown = false"
-              >
-                <span>{{ t("funddetail.vertical") }}</span>
-                <span class="text-xs text-gray-400">80 × 130 mm</span>
-              </a>
-            </div>
+          <div class="flex items-center gap-2">
+            <DropdownDownload
+              :label="t('funddetail.downloadQr')"
+              :icon="QrCode"
+              :options="qrOptions"
+              min-width="160px"
+            />
+            <DropdownDownload
+              :label="t('funddetail.printPng')"
+              :icon="Download"
+              :options="pngOptions"
+              min-width="200px"
+            />
           </div>
         </div>
         <p class="text-sm text-gray-600 mb-4">
@@ -851,7 +824,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, onMounted } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   Landmark,
@@ -867,7 +840,6 @@ import {
   Coins,
   AlertCircle,
   ChevronRight,
-  ChevronDown,
   Clock,
   FileDown,
   FileSpreadsheet,
@@ -876,8 +848,10 @@ import {
   Braces,
   Newspaper,
   Download,
+  QrCode,
 } from "@lucide/vue";
 import { Button } from "@/components/ui/button";
+import DropdownDownload from "@/components/ui/DropdownDownload.vue";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { fundsApi, walletsApi, type Fund } from "@/lib/api";
 import { useDatetimeFormat } from "@/composables/useDatetimeFormat";
@@ -929,13 +903,48 @@ const staticWidgetLoading = ref(false);
 const copiedStaticEmbed = ref(false);
 const copiedStaticAddress = ref(false);
 
-// PNG export dropdown
-const showPngDropdown = ref(false);
-
+// PNG / QR export option builders
 const pngExportUrl = (format: string) => {
   const apiKey = localStorage.getItem("xmr_api_key") || "";
   return `${appOrigin.value}/api/v1/funds/${fund.value?.id}/widget-png?format=${format}&api_key=${encodeURIComponent(apiKey)}`;
 };
+
+const qrPngExportUrl = (size: number) => {
+  const apiKey = localStorage.getItem("xmr_api_key") || "";
+  return `${appOrigin.value}/api/v1/funds/${fund.value?.id}/qr-png?size=${size}&api_key=${encodeURIComponent(apiKey)}`;
+};
+
+const qrSizes = [48, 96, 128, 256, 512];
+
+const qrOptions = computed(() =>
+  qrSizes.map((size) => ({
+    value: size,
+    label: `${size} × ${size}`,
+    hint: "px",
+    href: qrPngExportUrl(size),
+  })),
+);
+
+const pngOptions = computed(() => [
+  {
+    value: "business_card",
+    label: t("funddetail.businessCard"),
+    hint: "85.6 × 54 mm",
+    href: pngExportUrl("business_card"),
+  },
+  {
+    value: "wide",
+    label: t("funddetail.wide"),
+    hint: "190 × 65 mm",
+    href: pngExportUrl("wide"),
+  },
+  {
+    value: "vertical",
+    label: t("funddetail.vertical"),
+    hint: "80 × 130 mm",
+    href: pngExportUrl("vertical"),
+  },
+]);
 
 // Widget preview data
 const widgetData = ref<{
@@ -1445,21 +1454,8 @@ async function loadMorePosts() {
   }
 }
 
-// Click outside handler for PNG dropdown
-function handleClickOutside(event: MouseEvent) {
-  const target = event.target as HTMLElement;
-  if (showPngDropdown.value && !target.closest(".relative")) {
-    showPngDropdown.value = false;
-  }
-}
-
 onMounted(async () => {
-  document.addEventListener("click", handleClickOutside);
   await loadFormat();
   await loadFund();
-});
-
-onUnmounted(() => {
-  document.removeEventListener("click", handleClickOutside);
 });
 </script>

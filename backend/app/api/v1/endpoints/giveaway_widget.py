@@ -26,8 +26,8 @@ from app.models import Giveaway, Post, Transaction
 from app.reports.csv_export import generate_csv_export
 from app.reports.json_export import generate_json_export
 from app.reports.xml import generate_xml_report
+from app.services.qr import generate_qr_data_url
 from app.settings import get_datetime_format
-from app.api.v1.endpoints.fund_widget import _generate_qr_data_url
 
 DEFAULT_WIDGET_BG_COLOR = "#667eea"
 DEFAULT_WIDGET_TEXT_COLOR = "#ffffff"
@@ -350,7 +350,7 @@ async def get_giveaway_widget_json(
         "title": giveaway.title,
         "description": giveaway.description or "",
         "deposit_address": giveaway.deposit_address,
-        "qr_code": _generate_qr_data_url(f"monero:{giveaway.deposit_address}"),
+        "qr_code": generate_qr_data_url(f"monero:{giveaway.deposit_address}"),
         "min_amount_xmr": f"{giveaway.min_amount_xmr:.4f}",
         "start_date": giveaway.start_date.isoformat(),
         "end_date": giveaway.end_date.isoformat(),

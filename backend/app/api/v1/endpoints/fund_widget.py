@@ -7,16 +7,11 @@ Routes (mounted at root, no /api/v1 prefix):
     GET /widget/fund/{public_uuid}/export/{format} — public export (pdf, xlsx, csv, xml, json)
 """
 
-import base64
-import io
 from datetime import datetime, timedelta, timezone
-from typing import List, cast
+from typing import List
 
-import qrcode
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
-from qrcode.constants import ERROR_CORRECT_M
-from qrcode.image.pil import PilImage
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -36,31 +31,13 @@ from app.reports.json_export import generate_json_export
 from app.reports.pdf import generate_pdf_report
 from app.reports.xlsx import generate_xlsx_export
 from app.reports.xml import generate_xml_report
+from app.services.qr import generate_qr_data_url
 from app.settings import get_datetime_format
 
 DEFAULT_WIDGET_BG_COLOR = "#667eea"
 DEFAULT_WIDGET_TEXT_COLOR = "#ffffff"
 
 router = APIRouter()
-
-
-def _generate_qr_data_url(data: str, size: int = 200) -> str:
-    """Generate a QR code as a base64 PNG data URL."""
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=ERROR_CORRECT_M,
-        box_size=6,
-        border=2,
-    )
-    qr.add_data(data)
-    qr.make(fit=True)
-    # make_image() is typed as BaseImage (save has no `format` kwarg), but the
-    # default factory returns a PilImage whose save() accepts format=.
-    img = cast(PilImage, qr.make_image(fill_color="#000000", back_color="#ffffff"))
-    buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    b64 = base64.b64encode(buf.getvalue()).decode("ascii")
-    return f"data:image/png;base64,{b64}"
 
 
 FUND_WIDGET_JS_TEMPLATE = """
@@ -642,7 +619,7 @@ async def get_fund_widget_json(
     deposit_addr = fund.deposit_address
 
     # Monero URI scheme: monero:<address> — recognized by wallet apps
-    qr_data_url = _generate_qr_data_url(f"monero:{deposit_addr}")
+    qr_data_url = generate_qr_data_url(f"monero:{deposit_addr}")
 
     data = {
         "label": fund.label,

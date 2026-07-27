@@ -39,6 +39,8 @@ All times are returned in ISO 8601 format unless a custom datetime pattern is co
 | `GET` | `/api/v1/funds/{id}/report.pdf` | PDF report (WeasyPrint) |
 | `GET` | `/api/v1/funds/{id}/report.xml` | XML report |
 | `GET` | `/api/v1/funds/{id}/widget-png` | Download widget as PNG image (`format` query: `business_card`, `wide`, `vertical`) |
+| `GET` | `/api/v1/funds/{id}/qr-png` | Download deposit-address QR code as PNG (`size` query: `48`, `96`, `128`, `256`, `512` px; filename `QR_Code_{wallet_uuid}_{public_uuid}_{size}.png`) |
+| `GET` | `/api/v1/giveaways/{id}/qr-png` | Download deposit-address QR code as PNG (`size` query: `48`, `96`, `128`, `256`, `512` px; filename `QR_Code_{wallet_uuid}_{public_uuid}_{size}.png`) |
 
 ### Real-Time & Posts
 
