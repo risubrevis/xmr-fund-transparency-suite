@@ -1,0 +1,27 @@
+# Python bytecode caches — created at runtime, often as root inside containers.
+# Excluding them avoids "no permission to read" build-context errors when
+# the bind-mounted backend/ dir contains root-owned cache files.
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Tool caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Local runtime data (bind-mounted separately via ./data:/app/data)
+data/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# VCS & editor metadata
+.git/
+.gitignore
+.zed/
