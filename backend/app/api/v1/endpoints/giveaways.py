@@ -499,9 +499,7 @@ async def download_giveaway_widget_png(
 @router.get("/giveaways/{giveaway_id}/qr-png")
 async def download_giveaway_qr_png(
     giveaway_id: uuid.UUID,
-    size: int = Query(
-        256, description="Image size in pixels: 48, 96, 128, 256, 512"
-    ),
+    size: int = Query(256, description="Image size in pixels: 48, 96, 128, 256, 512"),
     db: AsyncSession = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> Response:
@@ -528,8 +526,7 @@ async def download_giveaway_qr_png(
     return Response(
         content=png_bytes,
         media_type="image/png",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

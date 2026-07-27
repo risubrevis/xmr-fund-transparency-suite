@@ -392,9 +392,7 @@ async def download_widget_png(
 @router.get("/funds/{fund_id}/qr-png")
 async def download_fund_qr_png(
     fund_id: uuid.UUID,
-    size: int = Query(
-        256, description="Image size in pixels: 48, 96, 128, 256, 512"
-    ),
+    size: int = Query(256, description="Image size in pixels: 48, 96, 128, 256, 512"),
     db: AsyncSession = Depends(get_db),
     api_key: str = Depends(verify_api_key),
 ) -> Response:
