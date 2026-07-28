@@ -507,11 +507,16 @@
         :cancel-text="t('common.cancel')"
         :loading="pickingWinner"
         :loading-text="t('giveawaydetail.pickingWinner')"
+        confirm-variant="default"
+        icon-bg-class="bg-orange-100"
         @confirm="pickWinner"
         @cancel="showPickModal = false"
       >
         <template #icon>
           <Trophy :size="20" class="text-monero-orange" />
+        </template>
+        <template #confirm-icon>
+          <Trophy :size="14" />
         </template>
       </ConfirmDialog>
 
