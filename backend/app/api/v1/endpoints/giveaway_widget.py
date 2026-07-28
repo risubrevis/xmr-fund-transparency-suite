@@ -3,7 +3,7 @@
 Routes (mounted at root, no /api/v1 prefix):
     GET /widget/giveaway/{public_uuid}.js        — embeddable JS widget
     GET /widget/giveaway/{public_uuid}.json      — widget data
-    GET /widget/giveaway/{public_uuid}/export/{format} — public export
+    GET /widget/giveaway/{public_uuid}/export/{format} — public export (pdf, xlsx, csv, xml, json)
 
 The widget has two states:
   * active  (now < end_date): countdown + entry info + QR
@@ -25,6 +25,8 @@ from app.database import get_db
 from app.models import Giveaway, Post, Transaction
 from app.reports.csv_export import generate_csv_export
 from app.reports.json_export import generate_json_export
+from app.reports.pdf import generate_pdf_report
+from app.reports.xlsx import generate_xlsx_export
 from app.reports.xml import generate_xml_report
 from app.services.qr import generate_qr_data_url
 from app.settings import get_datetime_format
@@ -172,7 +174,7 @@ function xmrGiveawayLoadMoreNews() {
     var btnStyle = 'display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:3px 8px;border-radius:4px;border:1px solid TEXT_COLOR_PLACEHOLDER;background:transparent;color:TEXT_COLOR_PLACEHOLDER;cursor:pointer;opacity:0.85;text-decoration:none;margin-right:4px;';
     function btn(href,label){return '<a href="'+href+'" style="'+btnStyle+'">'+label+'</a>';}
     var downloadsHtml = '<div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:4px;">' +
-        btn(exportBase+'csv','CSV') + btn(exportBase+'xml','XML') + btn(exportBase+'json','JSON') + '</div>';
+        btn(exportBase+'pdf','PDF') + btn(exportBase+'xlsx','XLSX') + btn(exportBase+'csv','CSV') + btn(exportBase+'xml','XML') + btn(exportBase+'json','JSON') + '</div>';
 
     fetch('APP_ORIGIN_PLACEHOLDER/widget/giveaway/UUID_PLACEHOLDER.json')
         .then(function(r){return r.json();})
@@ -375,7 +377,7 @@ async def get_giveaway_widget_json(
     )
 
 
-PUBLIC_EXPORT_FORMATS = {"csv", "xml", "json"}
+PUBLIC_EXPORT_FORMATS = {"pdf", "xlsx", "csv", "xml", "json"}
 
 
 @router.get("/widget/giveaway/{public_uuid}/export/{export_format}")
@@ -386,7 +388,7 @@ async def public_giveaway_export(
     end_date: datetime | None = Query(None),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
-    """Public export of transactions recorded for a giveaway (csv, xml, json)."""
+    """Public export of transactions recorded for a giveaway (pdf, xlsx, csv, xml, json)."""
     if export_format not in PUBLIC_EXPORT_FORMATS:
         raise HTTPException(
             status_code=400,
@@ -432,7 +434,42 @@ async def public_giveaway_export(
 
     dt_format = get_datetime_format()
     gid = str(giveaway.id)
+    deposit_addr = giveaway.deposit_address
+    grand_total = str(sum(tx.amount_xmr for tx in transactions))
 
+    if export_format == "pdf":
+        data = generate_pdf_report(
+            fund_label=giveaway.title,
+            fund_description=giveaway.description,
+            deposit_address=deposit_addr,
+            wallet_height=None,
+            transactions=tx_dicts,
+            total_xmr=overall_total,
+            target_xmr=None,
+            grand_total=grand_total,
+            date_from=start_date,
+            date_to=end_date,
+            datetime_format=dt_format,
+            filter_metadata=None,
+        )
+        return Response(
+            content=data,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename=giveaway_{gid}.pdf"},
+        )
+    if export_format == "xlsx":
+        data = generate_xlsx_export(
+            transactions=tx_dicts,
+            fund_label=giveaway.title,
+            datetime_format=dt_format,
+        )
+        return Response(
+            content=data,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f"attachment; filename=giveaway_{gid}.xlsx"
+            },
+        )
     if export_format == "csv":
         data = generate_csv_export(
             transactions=tx_dicts,

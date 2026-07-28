@@ -97,6 +97,18 @@
 
           <div class="flex flex-wrap gap-1.5 mt-3">
             <a
+              :href="exportUrl('pdf')"
+              :style="btnStyle"
+              class="inline-flex items-center gap-1 no-underline"
+              ><FileDown :size="10" /> PDF</a
+            >
+            <a
+              :href="exportUrl('xlsx')"
+              :style="btnStyle"
+              class="inline-flex items-center gap-1 no-underline"
+              ><FileSpreadsheet :size="10" /> XLSX</a
+            >
+            <a
               :href="exportUrl('csv')"
               :style="btnStyle"
               class="inline-flex items-center gap-1 no-underline"
@@ -172,7 +184,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from "vue";
-import { Gift, Trophy, Loader2, FileCode, Braces, QrCode } from "@lucide/vue";
+import { Gift, Trophy, Loader2, FileDown, FileSpreadsheet, FileCode, Braces, QrCode } from "@lucide/vue";
 import QRCode from "qrcode";
 import DropdownDownload from "@/components/ui/DropdownDownload.vue";
 import { publicGiveawayWidgetExportUrl } from "@/lib/api";
@@ -272,7 +284,7 @@ const displayAddress = computed(() => {
   return a.slice(0, 10) + "..." + a.slice(-10);
 });
 
-const exportUrl = (format: "csv" | "xml" | "json") =>
+const exportUrl = (format: "pdf" | "xlsx" | "csv" | "xml" | "json") =>
   publicGiveawayWidgetExportUrl(props.publicUuid, format);
 
 async function generateQr() {

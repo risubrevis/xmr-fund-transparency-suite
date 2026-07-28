@@ -71,5 +71,5 @@ All times are returned in ISO 8601 format unless a custom datetime pattern is co
 | `GET` | `/widget/giveaway/{uuid}.js` | Embeddable JavaScript giveaway widget (countdown or winner) |
 | `GET` | `/widget/giveaway/{uuid}.json` | Giveaway widget JSON data |
 | `GET` | `/widget/giveaway/{uuid}/posts.json` | Giveaway widget posts JSON |
-| `GET` | `/widget/giveaway/{uuid}/export/{format}` | Public giveaway widget export (`csv`, `xml`, `json`; scoped to the widget's giveaway) |
+| `GET` | `/widget/giveaway/{uuid}/export/{format}` | Public giveaway widget export (`pdf`, `xlsx`, `csv`, `xml`, `json`; scoped to the widget's giveaway) |
 | `GET` | `/health` | Healthcheck with DB, Redis, RPC, and scanner status |

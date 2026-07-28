@@ -461,7 +461,7 @@ export const giveawaysApi = {
 /** Build the public giveaway widget export URL (no API key needed). */
 export function publicGiveawayWidgetExportUrl(
   publicUuid: string,
-  format: "csv" | "xml" | "json",
+  format: "pdf" | "xlsx" | "csv" | "xml" | "json",
 ): string {
   const base = import.meta.env.VITE_API_BASE || "";
   return `${base}/widget/giveaway/${publicUuid}/export/${format}`;
