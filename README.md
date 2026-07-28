@@ -12,6 +12,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Use_Case-Donation_Tracker-FF6600?logo=monero&logoColor=white" alt="Donation Tracker">
   <img src="https://img.shields.io/badge/Use_Case-Fundraising-9B59B6" alt="Fundraising">
+  <img src="https://img.shields.io/badge/Use_Case-Raffles-E67E22" alt="Raffles">
   <img src="https://img.shields.io/badge/Privacy-View--Key_Only-2ECC71" alt="View-Key Only">
   <img src="https://img.shields.io/badge/Self--Hosted-✓-F39C12" alt="Self-Hosted">
   <img src="https://img.shields.io/badge/Realtime-SSE-F1C40F" alt="Realtime SSE">
@@ -70,6 +71,37 @@ Your coins remain 100% secure in cold storage, while your donors get a beautiful
 
 ---
 
+## 🎟️ Two Campaign Types: Funds & Giveaways
+
+XMR FTS supports two kinds of campaigns you can attach to a wallet. Both get their own deposit sub-address, their own embeddable widget, their own news micro-blog, and their own exportable transaction history — but they serve very different purposes.
+
+### 🎯 Funds — Transparent Fundraising
+
+A **Fund** is a long-running donation tracker with an optional fundraising **target**. It is designed for situations where you want to *continuously* prove to your community that incoming donations are real and progressing toward a goal.
+
+- **No deadline.** A fund stays open until you pause or delete it.
+- **Progress toward a target.** Set a `target_amount_xmr` and the widget shows a live progress bar / radial gauge.
+- **Cumulative analytics.** Cumulative-received chart, donation-size segmentation, and volume distribution — all update in real time.
+- **Typical use cases:** ongoing infrastructure funding, monthly donation addresses, "buy me a coffee" style tip addresses.
+
+**Example:** A Monero node operator runs a Fund called *"Node Hosting 2026"* with a target of 120 XMR. The widget embedded on their site shows donations trickling in toward the goal, with a news post each month publishing the server's uptime stats.
+
+### 🎲 Giveaways — Provably-Fair Raffles
+
+A **Giveaway** is a *bounded* campaign with a `start_date`, an `end_date`, and a `min_amount_xmr` entry threshold. Every qualifying donation to the giveaway's deposit address counts as one raffle entry, and the winner is selected by a **provably-fair** algorithm after the campaign closes.
+
+- **Time-boxed.** Entries are accepted only between `start_date` and `end_date`.
+- **Entry threshold.** Donations below `min_amount_xmr` are still recorded for transparency but don't qualify as entries.
+- **Provably-fair winner selection.** The seed is the hash of the **first Monero block mined strictly after `end_date`** (fetched live from a Monero daemon). Each eligible transaction's score is `sha256(block_hash || txid)`; the lowest score wins. Nobody — not even you — can predict or influence the winner in advance, and anyone can verify the result afterward.
+- **Public countdown + winner reveal.** The widget shows a live countdown while the giveaway is active, then displays the winning transaction, the seed block height + hash, and your `instructions_after_end` claim instructions once closed.
+- **Typical use cases:** community raffles, CCS-style milestone rewards, conference ticket giveaways, "donate to enter" promotions.
+
+**Example:** A Monero community podcast runs a Giveaway called *"Q3 Merch Raffle"* from July 1 to July 31, with a `min_amount_xmr` of 0.5. Listeners donate to the giveaway's address to enter. On August 1 the host clicks *Pick Winner* — the suite fetches the first block mined after July 31, hashes it with each entry's `txid`, and announces the winner on the public widget along with the seed block so anyone can independently verify the draw.
+
+> **Shared infrastructure:** Both Funds and Giveaways live side-by-side under the same wallets, share the same background scanner, the same news posts system, the same multi-format exports, and the same per-campaign widget styling. A `deposit_address` is unique across both tables, so the scanner always routes an incoming transaction to exactly one campaign.
+
+---
+
 ## Key Features
 
 ### 🔒 View-Key Only Security
@@ -86,7 +118,7 @@ Each fund exposes an optional `deposit_address` field. When set (for example, a 
 
 Changing the `deposit_address` automatically resets scan history and triggers a full rescan.
 
-### 🎨 Per-Fund Widget Styling
+### 🎨 Per-Fund/Giveaway Widget Styling
 
 Each fund has its own `widget_background_color` and `widget_text_color`, configurable via the fund settings page. Drop a `<script>` tag into any website to display live donation progress, a QR code, and a collapsible news feed — all branded to match your campaign.
 
