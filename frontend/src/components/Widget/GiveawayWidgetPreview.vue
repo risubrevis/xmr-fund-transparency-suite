@@ -408,7 +408,7 @@ const btnStyle = computed(() => {
 const appOrigin = import.meta.env.VITE_API_BASE || window.location.origin;
 const embedCode = computed(
   () =>
-    `<div id="xmr-giveaway-widget"></div>\n<script src="${appOrigin}/widget/giveaway/${props.publicUuid}.js">${"\u003c/"}script>`,
+    `<div id="xmr-giveaway-widget-${props.publicUuid}"></div>\n<script src="${appOrigin}/widget/giveaway/${props.publicUuid}.js">${"\u003c/"}script>`,
 );
 
 // QR code PNG download options

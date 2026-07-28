@@ -72,9 +72,10 @@ function xmrCopyAddr(btn) {
     }
 }
 
-var xmrNewsOffset = 0;
-var xmrNewsHasPosts = false;
-var xmrNewsUuid = '';
+// Per-widget state registry keyed by public_uuid so multiple fund widgets can
+// coexist on the same page without sharing news pagination state.
+window.xmrFundWidgets = window.xmrFundWidgets || {};
+window.xmrFundWidgets['UUID_PLACEHOLDER'] = { offset: 0 };
 
 function xmrEscapeHtml(text) {
     var d = document.createElement('div');
@@ -82,40 +83,42 @@ function xmrEscapeHtml(text) {
     return d.innerHTML;
 }
 
-function xmrToggleNews() {
-    var content = document.getElementById('xmr-news-content');
-    var arrow = document.getElementById('xmr-news-arrow');
+function xmrToggleNews(uuid) {
+    var content = document.getElementById('xmr-news-' + uuid + '-content');
+    var arrow = document.getElementById('xmr-news-' + uuid + '-arrow');
     if (!content || !arrow) return;
+    var st = window.xmrFundWidgets[uuid];
     if (content.style.display === 'none') {
         content.style.display = 'block';
         arrow.textContent = '\u25b2';
         // Reset and re-fetch on every expand
-        xmrNewsOffset = 0;
-        xmrFetchNews();
+        st.offset = 0;
+        xmrFetchNews(uuid);
     } else {
         content.style.display = 'none';
         arrow.textContent = '\u25bc';
         // Reset state on collapse
-        var postsContainer = document.getElementById('xmr-news-posts');
+        var postsContainer = document.getElementById('xmr-news-' + uuid + '-posts');
         if (postsContainer) postsContainer.innerHTML = '';
-        var moreBtn = document.getElementById('xmr-news-more');
+        var moreBtn = document.getElementById('xmr-news-' + uuid + '-more');
         if (moreBtn) moreBtn.style.display = 'none';
     }
 }
 
-function xmrFetchNews() {
-    var container = document.getElementById('xmr-news-posts');
-    if (xmrNewsOffset === 0) {
+function xmrFetchNews(uuid) {
+    var st = window.xmrFundWidgets[uuid];
+    var container = document.getElementById('xmr-news-' + uuid + '-posts');
+    if (st.offset === 0) {
         container.innerHTML = '<div style="text-align:center;padding:8px;opacity:0.7;">Loading...</div>';
     }
-    var btn = document.getElementById('xmr-news-more');
-    fetch('APP_ORIGIN_PLACEHOLDER/widget/fund/' + xmrNewsUuid + '/posts.json?limit=5&offset=' + xmrNewsOffset)
+    var btn = document.getElementById('xmr-news-' + uuid + '-more');
+    fetch('APP_ORIGIN_PLACEHOLDER/widget/fund/' + uuid + '/posts.json?limit=5&offset=' + st.offset)
         .then(function(r) { return r.json(); })
         .then(function(data) {
-            if (xmrNewsOffset === 0) {
+            if (st.offset === 0) {
                 container.innerHTML = '';
             }
-            if (data.posts.length === 0 && xmrNewsOffset === 0) {
+            if (data.posts.length === 0 && st.offset === 0) {
                 var empty = document.createElement('div');
                 empty.style.cssText = 'text-align:center;padding:8px;opacity:0.6;font-size:12px;';
                 empty.textContent = 'No news yet';
@@ -134,7 +137,7 @@ function xmrFetchNews() {
                 card.appendChild(bodyEl);
                 container.appendChild(card);
             });
-            xmrNewsOffset += data.posts.length;
+            st.offset += data.posts.length;
             if (data.has_more) {
                 btn.style.display = 'inline-flex';
                 btn.textContent = 'Load more';
@@ -144,7 +147,7 @@ function xmrFetchNews() {
             }
         })
         .catch(function() {
-            if (xmrNewsOffset === 0) {
+            if (st.offset === 0) {
                 container.innerHTML = '<div style="text-align:center;padding:8px;opacity:0.7;">Failed to load news</div>';
             }
             btn.textContent = 'Load more';
@@ -152,15 +155,18 @@ function xmrFetchNews() {
         });
 }
 
-function xmrLoadMoreNews() {
-    var btn = document.getElementById('xmr-news-more');
+function xmrLoadMoreNews(uuid) {
+    var btn = document.getElementById('xmr-news-' + uuid + '-more');
     btn.textContent = 'Loading...';
     btn.disabled = true;
-    xmrFetchNews();
+    xmrFetchNews(uuid);
 }
 
 (function() {
-    var container = document.getElementById('xmr-fund-widget');
+    // Prefer the uuid-namespaced container so multiple widgets can coexist on
+    // one page. Fall back to the legacy id for backwards compatibility with
+    // embeds generated before per-uuid ids were introduced.
+    var container = document.getElementById('xmr-fund-widget-UUID_PLACEHOLDER') || document.getElementById('xmr-fund-widget');
     if (!container) return;
 
     function hexToHsl(hex) {
@@ -257,14 +263,14 @@ function xmrLoadMoreNews() {
                     newsLabel += '<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:600;background:#FF6600;color:#fff;border-radius:8px;padding:1px 6px;flex-shrink:0;">+' + data.fresh_posts_count + '</span>';
                 }
                 newsSectionHtml =
-                    '<div id="xmr-news-section" style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;">' +
-                    '<div onclick="xmrToggleNews()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;">' +
+                    '<div id="xmr-news-UUID_PLACEHOLDER-section" style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;">' +
+                    '<div onclick="xmrToggleNews(&quot;UUID_PLACEHOLDER&quot;)" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;">' +
                     '<span style="font-size:13px;font-weight:600;letter-spacing:0.3px;display:inline-flex;align-items:center;flex-wrap:nowrap;gap:4px;">' + newsLabel + '</span>' +
-                    '<span id="xmr-news-arrow" style="font-size:11px;opacity:0.7;">' + '\u25bc' + '</span>' +
+                    '<span id="xmr-news-UUID_PLACEHOLDER-arrow" style="font-size:11px;opacity:0.7;">' + '\u25bc' + '</span>' +
                     '</div>' +
-                    '<div id="xmr-news-content" style="display:none;margin-top:10px;">' +
-                    '<div id="xmr-news-posts"></div>' +
-                    '<button id="xmr-news-more" onclick="xmrLoadMoreNews()" style="display:none;margin-top:8px;font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.85;">Load more</button>' +
+                    '<div id="xmr-news-UUID_PLACEHOLDER-content" style="display:none;margin-top:10px;">' +
+                    '<div id="xmr-news-UUID_PLACEHOLDER-posts"></div>' +
+                    '<button id="xmr-news-UUID_PLACEHOLDER-more" onclick="xmrLoadMoreNews(&quot;UUID_PLACEHOLDER&quot;)" style="display:none;margin-top:8px;font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.85;">Load more</button>' +
                     '</div>' +
                     '</div>';
             }
@@ -294,10 +300,6 @@ function xmrLoadMoreNews() {
                 newsSectionHtml +
                 '</div>';
 
-            xmrNewsUuid = 'UUID_PLACEHOLDER';
-            if (data.post_count > 0) {
-                xmrNewsHasPosts = true;
-            }
         })
         .catch(function(err) {
             container.innerHTML = '<div style="color: red;">Failed to load widget</div>';

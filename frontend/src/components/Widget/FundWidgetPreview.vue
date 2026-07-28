@@ -250,7 +250,7 @@
         <div
           class="bg-gray-900 text-gray-100 p-4 rounded-lg text-sm font-mono overflow-x-auto"
         >
-          &lt;div id="xmr-fund-widget"&gt;&lt;/div&gt;<br />
+          &lt;div id="xmr-fund-widget-{{ publicUuid }}"&gt;&lt;/div&gt;<br />
           &lt;script src="{{ baseUrl }}/widget/fund/{{
             publicUuid
           }}.js"&gt;&lt;/script&gt;

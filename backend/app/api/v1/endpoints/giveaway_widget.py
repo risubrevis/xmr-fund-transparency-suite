@@ -88,39 +88,43 @@ function xmrFmtCountdown(ms) {
     return parts.join(':');
 }
 
-var xmrGiveawayNewsOffset = 0;
-var xmrGiveawayNewsUuid = '';
+// Per-widget state registry keyed by public_uuid so multiple giveaway widgets
+// can coexist on the same page without sharing news pagination state.
+window.xmrGiveawayWidgets = window.xmrGiveawayWidgets || {};
+window.xmrGiveawayWidgets['UUID_PLACEHOLDER'] = { offset: 0 };
 
-function xmrGiveawayToggleNews() {
-    var content = document.getElementById('xmr-giveaway-news-content');
-    var arrow = document.getElementById('xmr-giveaway-news-arrow');
+function xmrGiveawayToggleNews(uuid) {
+    var content = document.getElementById('xmr-giveaway-news-' + uuid + '-content');
+    var arrow = document.getElementById('xmr-giveaway-news-' + uuid + '-arrow');
     if (!content || !arrow) return;
+    var st = window.xmrGiveawayWidgets[uuid];
     if (content.style.display === 'none') {
         content.style.display = 'block';
         arrow.textContent = '\u25b2';
-        xmrGiveawayNewsOffset = 0;
-        xmrGiveawayFetchNews();
+        st.offset = 0;
+        xmrGiveawayFetchNews(uuid);
     } else {
         content.style.display = 'none';
         arrow.textContent = '\u25bc';
-        var c = document.getElementById('xmr-giveaway-news-posts'); if (c) c.innerHTML = '';
-        var b = document.getElementById('xmr-giveaway-news-more'); if (b) b.style.display = 'none';
+        var c = document.getElementById('xmr-giveaway-news-' + uuid + '-posts'); if (c) c.innerHTML = '';
+        var b = document.getElementById('xmr-giveaway-news-' + uuid + '-more'); if (b) b.style.display = 'none';
     }
 }
 
-function xmrGiveawayFetchNews() {
-    var container = document.getElementById('xmr-giveaway-news-posts');
+function xmrGiveawayFetchNews(uuid) {
+    var st = window.xmrGiveawayWidgets[uuid];
+    var container = document.getElementById('xmr-giveaway-news-' + uuid + '-posts');
     if (!container) return;
-    if (xmrGiveawayNewsOffset === 0) {
+    if (st.offset === 0) {
         container.innerHTML = '<div style="text-align:center;padding:8px;opacity:0.7;">Loading...</div>';
     }
-    var btn = document.getElementById('xmr-giveaway-news-more');
-    var base = 'APP_ORIGIN_PLACEHOLDER/widget/giveaway/' + xmrGiveawayNewsUuid;
-    fetch(base + '/posts.json?limit=5&offset=' + xmrGiveawayNewsOffset)
+    var btn = document.getElementById('xmr-giveaway-news-' + uuid + '-more');
+    var base = 'APP_ORIGIN_PLACEHOLDER/widget/giveaway/' + uuid;
+    fetch(base + '/posts.json?limit=5&offset=' + st.offset)
         .then(function(r){ return r.json(); })
         .then(function(data) {
-            if (xmrGiveawayNewsOffset === 0) container.innerHTML = '';
-            if (data.posts.length === 0 && xmrGiveawayNewsOffset === 0) {
+            if (st.offset === 0) container.innerHTML = '';
+            if (data.posts.length === 0 && st.offset === 0) {
                 var empty = document.createElement('div');
                 empty.style.cssText = 'text-align:center;padding:8px;opacity:0.6;font-size:12px;';
                 empty.textContent = 'No news yet';
@@ -138,24 +142,27 @@ function xmrGiveawayFetchNews() {
                 card.appendChild(dateEl); card.appendChild(bodyEl);
                 container.appendChild(card);
             });
-            xmrGiveawayNewsOffset += data.posts.length;
+            st.offset += data.posts.length;
             if (data.has_more) { btn.style.display = 'inline-flex'; btn.textContent = 'Load more'; btn.disabled = false; }
             else { btn.style.display = 'none'; }
         })
         .catch(function() {
-            if (xmrGiveawayNewsOffset === 0) container.innerHTML = '<div style="text-align:center;padding:8px;opacity:0.7;">Failed to load news</div>';
+            if (st.offset === 0) container.innerHTML = '<div style="text-align:center;padding:8px;opacity:0.7;">Failed to load news</div>';
             if (btn) { btn.textContent = 'Load more'; btn.disabled = false; }
         });
 }
 
-function xmrGiveawayLoadMoreNews() {
-    var b = document.getElementById('xmr-giveaway-news-more');
+function xmrGiveawayLoadMoreNews(uuid) {
+    var b = document.getElementById('xmr-giveaway-news-' + uuid + '-more');
     b.textContent = 'Loading...'; b.disabled = true;
-    xmrGiveawayFetchNews();
+    xmrGiveawayFetchNews(uuid);
 }
 
 (function() {
-    var container = document.getElementById('xmr-giveaway-widget');
+    // Prefer the uuid-namespaced container so multiple widgets can coexist on
+    // one page. Fall back to the legacy id for backwards compatibility with
+    // embeds generated before per-uuid ids were introduced.
+    var container = document.getElementById('xmr-giveaway-widget-UUID_PLACEHOLDER') || document.getElementById('xmr-giveaway-widget');
     if (!container) return;
 
     function hexToHsl(hex) {
@@ -221,7 +228,7 @@ function xmrGiveawayLoadMoreNews() {
                     '<div style="font-size:14px;opacity:0.9;margin-bottom:8px;">&#127873; '+data.title+'</div>' +
                     (data.description ? '<div style="font-size:12px;opacity:0.8;margin-bottom:6px;">'+data.description+'</div>' : '') +
                     '<div style="font-size:11px;opacity:0.85;margin-bottom:4px;">Min entry: <b>'+data.min_amount_xmr+' XMR</b> · Entries: <b>'+data.eligible_count+'</b></div>' +
-                    '<div id="xmr-giveaway-countdown" style="font-size:24px;font-weight:bold;letter-spacing:1px;margin:6px 0;">'+xmrFmtCountdown(data.remaining_ms)+'</div>' +
+                    '<div id="xmr-giveaway-countdown-UUID_PLACEHOLDER" style="font-size:24px;font-weight:bold;letter-spacing:1px;margin:6px 0;">'+xmrFmtCountdown(data.remaining_ms)+'</div>' +
                     '<div style="font-size:11px;opacity:0.8;">Starts: '+xmrFmtTs(data.start_date)+'</div>' +
                     '<div style="font-size:11px;opacity:0.8;">Ends: '+xmrFmtTs(data.end_date)+'</div>' +
                     '<div style="font-size:12px;opacity:0.85;margin-top:6px;">Total received: '+data.total_received_xmr+' XMR</div>' +
@@ -235,14 +242,14 @@ function xmrGiveawayLoadMoreNews() {
                 if (data.fresh_posts_count > 0) {
                     newsLabel += '<span style="display:inline-flex;align-items:center;font-size:10px;font-weight:600;background:#FF6600;color:#fff;border-radius:8px;padding:1px 6px;flex-shrink:0;">+' + data.fresh_posts_count + '</span>';
                 }
-                newsSectionHtml = '<div id="xmr-giveaway-news-section" style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;">' +
-                    '<div onclick="xmrGiveawayToggleNews()" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;">' +
+                newsSectionHtml = '<div id="xmr-giveaway-news-UUID_PLACEHOLDER-section" style="margin-top:16px;border-top:1px solid rgba(255,255,255,0.2);padding-top:12px;">' +
+                    '<div onclick="xmrGiveawayToggleNews(&quot;UUID_PLACEHOLDER&quot;)" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;">' +
                     '<span style="font-size:13px;font-weight:600;letter-spacing:0.3px;display:inline-flex;align-items:center;flex-wrap:nowrap;gap:4px;">' + newsLabel + '</span>' +
-                    '<span id="xmr-giveaway-news-arrow" style="font-size:11px;opacity:0.7;">\u25bc</span>' +
+                    '<span id="xmr-giveaway-news-UUID_PLACEHOLDER-arrow" style="font-size:11px;opacity:0.7;">\u25bc</span>' +
                     '</div>' +
-                    '<div id="xmr-giveaway-news-content" style="display:none;margin-top:10px;">' +
-                    '<div id="xmr-giveaway-news-posts"></div>' +
-                    '<button id="xmr-giveaway-news-more" onclick="xmrGiveawayLoadMoreNews()" style="display:none;margin-top:8px;font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.85;">Load more</button>' +
+                    '<div id="xmr-giveaway-news-UUID_PLACEHOLDER-content" style="display:none;margin-top:10px;">' +
+                    '<div id="xmr-giveaway-news-UUID_PLACEHOLDER-posts"></div>' +
+                    '<button id="xmr-giveaway-news-UUID_PLACEHOLDER-more" onclick="xmrGiveawayLoadMoreNews(&quot;UUID_PLACEHOLDER&quot;)" style="display:none;margin-top:8px;font-size:11px;padding:5px 14px;border-radius:6px;border:1px solid ' + textColor + ';background:transparent;color:' + textColor + ';cursor:pointer;opacity:0.85;">Load more</button>' +
                     '</div>' +
                     '</div>';
             }
@@ -257,10 +264,8 @@ function xmrGiveawayLoadMoreNews() {
                 '<div style="font-size:11px;opacity:0.6;padding-top:12px;"><a href="https://xmrfts.com" target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:none;">Giveaway widget powered by xmrfts.com</a></div>' +
                 '</div>';
 
-            xmrGiveawayNewsUuid = 'UUID_PLACEHOLDER';
-
             if (!data.is_closed && data.remaining_ms > 0) {
-                var el = document.getElementById('xmr-giveaway-countdown');
+                var el = document.getElementById('xmr-giveaway-countdown-UUID_PLACEHOLDER');
                 if (el) {
                     var endMs = new Date(data.end_date).getTime();
                     setInterval(function(){

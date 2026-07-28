@@ -990,7 +990,7 @@ const widgetJsonUrl = computed(
 );
 const embedCode = computed(
   () =>
-    `<div id="xmr-fund-widget"></div>\n<script src="${appOrigin.value}/widget/fund/${fundUuid.value}.js">${"\u003c/"}script>`,
+    `<div id="xmr-fund-widget-${fundUuid.value}"></div>\n<script src="${appOrigin.value}/widget/fund/${fundUuid.value}.js">${"\u003c/"}script>`,
 );
 
 const staticWidgetSnippet = computed(() => {
